@@ -1,177 +1,90 @@
-# Pintura Interactiva con Gestos - Transgresión Digital# Pintura Interactiva con Gestos - Transgresión Digital
+# Pintura Interactiva con Gestos - Transgresión Digital
 
+Aplicación de pintura artística controlada por gestos de mano, diseñada para explorar el concepto de transgresión en el arte digital.
 
-
-Aplicación de pintura artística controlada por gestos de mano, diseñada para explorar el concepto de transgresión en el arte digital.Aplicación de pintura artística controlada por gestos de mano, diseñada para explorar el concepto de transgresión en el arte digital.
-
-
-
-## 🚀 Inicio Rápido## 📁 Estructura del Proyecto
-
-
-
-### Windows```
-
-```bashproyecto/
-
-start.bat│
-
-```├── main.py              # 🎨 Aplicación principal
-
-├── config.py            # ⚙️ Configuración global
-
-### Manual├── gesture_detector.py  # 🤚 Detección de gestos con MediaPipe
-
-```bash├── brushes.py           # 🖌️ Sistema de pinceles
-
-# Ejecutar aplicación├── canvas.py            # 🖼️ Lienzo digital
-
-python src/main.py├── feedback.py          # 👁️ Retroalimentación visual
-
-├── utils.py             # 🔧 Utilidades y herramientas
-
-# Verificar sistema├── extensions.py        # ➕ Extensiones y ejemplos
-
-python scripts/demo.py├── test_components.py   # 🧪 Tests unitarios
-
-│
-
-# Ejecutar tests├── README.md            # 📖 Este archivo
-
-python -m pytest tests/ -v├── ARCHITECTURE.md      # 🏗️ Documentación de arquitectura
-
-```├── CONTRIBUTING.md      # 🤝 Guía de contribución
-
-├── requirements.txt     # 📦 Dependencias
-
-## 📦 Instalación│
-
-└── french.py            # 📜 Versión original (legacy)
-
-```bash```
-
-pip install -r requirements.txt
-
-```## ✨ Características
-
-
-
-## 📁 Estructura del Proyecto- **Detección de gestos inteligente**: Usa MediaPipe Hands para detección precisa
-
-- **Múltiples pinceles artísticos**: Línea continua y efecto impresionista (dab)
-
-```- **Paleta de colores**: Azul, Verde, Rojo, Amarillo (fácilmente extensible)
-
-proyecto/- **Retroalimentación visual en tiempo real**: Feedback instantáneo del estado del gesto
-
-├── src/                    # Código fuente- **Arquitectura modular y extensible**: Código organizado por responsabilidades
-
-│   ├── core/              # Componentes principales- **Sistema de tests**: Tests unitarios para componentes críticos
-
-│   │   ├── config.py      # Configuración- **Utilidades artísticas**: Filtros, exportación, análisis de trazos
-
-│   │   ├── gesture_detector.py- **Fácil de extender**: Sistema de plugins para nuevos pinceles y gestos
-
-│   │   ├── brushes.py
-
-│   │   ├── canvas.py## 🚀 Instalación
-
-│   │   └── feedback.py
-
-│   ├── utils/             # Utilidades### Requisitos Previos
-
-│   │   ├── utils.py       # Herramientas
-
-│   │   └── extensions.py  # Extensiones- Python 3.8 o superior
-
-│   └── main.py            # Aplicación principal- Webcam funcional
-
-│
-
-├── tests/                 # Tests unitarios### Instalación de Dependencias
-
-│   └── test_components.py
-
-│```bash
-
-├── scripts/               # Scripts auxiliares# Clonar o descargar el proyecto
-
-│   └── demo.py           # Demostracióncd proyecto
-
-│
-
-├── docs/                  # Documentación# Instalar dependencias
-
-│   ├── README.md         # Guía completapip install -r requirements.txt
-
-│   ├── ARCHITECTURE.md   # Arquitectura```
-
-│   ├── CONTRIBUTING.md   # Contribución
-
-│   └── PROJECT_SUMMARY.md### Dependencias Principales
-
-│
-
-├── legacy/                # Código original- `opencv-python`: Procesamiento de imágenes y video
-
-│   └── french.py- `mediapipe`: Detección de gestos de mano
-
-│- `numpy`: Operaciones numéricas
-
-├── requirements.txt       # Dependencias
-
-└── start.bat             # Inicio rápido## 🎮 Uso
+## 📁 Estructura del Proyecto
 
 ```
+proyecto/
+│
+├── main.py              # 🎨 Aplicación principal
+├── config.py            # ⚙️ Configuración global
+├── gesture_detector.py  # 🤚 Detección de gestos con MediaPipe
+├── brushes.py           # 🖌️ Sistema de pinceles
+├── canvas.py            # 🖼️ Lienzo digital
+├── feedback.py          # 👁️ Retroalimentación visual
+├── utils.py             # 🔧 Utilidades y herramientas
+├── extensions.py        # ➕ Extensiones y ejemplos
+├── test_components.py   # 🧪 Tests unitarios
+│
+├── README.md            # 📖 Este archivo
+├── ARCHITECTURE.md      # 🏗️ Documentación de arquitectura
+├── CONTRIBUTING.md      # 🤝 Guía de contribución
+├── requirements.txt     # 📦 Dependencias
+│
+└── french.py            # 📜 Versión original (legacy)
+```
+
+## ✨ Características
+
+- **Detección de gestos inteligente**: Usa MediaPipe Hands para detección precisa
+- **Múltiples pinceles artísticos**: Línea continua y efecto impresionista (dab)
+- **Paleta de colores**: Azul, Verde, Rojo, Amarillo (fácilmente extensible)
+- **Retroalimentación visual en tiempo real**: Feedback instantáneo del estado del gesto
+- **Arquitectura modular y extensible**: Código organizado por responsabilidades
+- **Sistema de tests**: Tests unitarios para componentes críticos
+- **Utilidades artísticas**: Filtros, exportación, análisis de trazos
+- **Fácil de extender**: Sistema de plugins para nuevos pinceles y gestos
+
+## 🚀 Instalación
+
+### Requisitos Previos
+
+- Python 3.8 o superior
+- Webcam funcional
+
+### Instalación de Dependencias
+
+```bash
+# Clonar o descargar el proyecto
+cd proyecto
+
+# Instalar dependencias
+pip install -r requirements.txt
+```
+
+### Dependencias Principales
+
+- `opencv-python`: Procesamiento de imágenes y video
+- `mediapipe`: Detección de gestos de mano
+- `numpy`: Operaciones numéricas
+
+## 🎮 Uso
 
 ### Ejecutar la Aplicación
 
-## 🎮 Controles
-
 ```bash
+python main.py
+```
 
-### Tecladopython main.py
+### Controles de Teclado
 
-- `q` - Salir```
-
-- `c` - Borrar lienzo
-
-- `1,2,3,4` - Cambiar color### Controles de Teclado
-
-- `t` - Cambiar tipo de pincel
-
-- `s` - Cambiar tamaño| Tecla | Acción |
-
+| Tecla | Acción |
 |-------|--------|
-
-### Gestos| `q` | Salir del programa |
-
-- **Dibujar**: Dedo índice extendido, demás dedos flexionados| `c` | Borrar todo el lienzo |
-
+| `q` | Salir del programa |
+| `c` | Borrar todo el lienzo |
 | `1` | Seleccionar color AZUL |
-
-## 📚 Documentación| `2` | Seleccionar color VERDE |
-
+| `2` | Seleccionar color VERDE |
 | `3` | Seleccionar color ROJO |
-
-Ver documentación completa en [`docs/README.md`](docs/README.md)| `4` | Seleccionar color AMARILLO |
-
+| `4` | Seleccionar color AMARILLO |
 | `t` | Cambiar tipo de pincel |
+| `s` | Cambiar tamaño de pincel |
 
-## 🎨 Concepto Artístico| `s` | Cambiar tamaño de pincel |
+### Gesto de Dibujo
 
-
-
-Proyecto que explora la **transgresión digital** como forma de expresión artística contemporánea.### Gesto de Dibujo
-
-
-
-## 📄 LicenciaPara dibujar:
-
+Para dibujar:
 1. **Extiende SOLO el dedo índice**
-
-Proyecto académico - Universidad PUCP2. Mantén los dedos corazón, anular y meñique **flexionados** hacia la palma
-
+2. Mantén los dedos corazón, anular y meñique **flexionados** hacia la palma
 3. El pulgar puede estar en cualquier posición
 4. Observa el feedback visual en la ventana 'Tracking' para ajustar tu mano
 
