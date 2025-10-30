@@ -23,11 +23,9 @@ class PaintApp:
         self.brush_manager = BrushManager(BRUSH_TYPES, BRUSH_SIZES)
         self.canvas = Canvas(PAINT_WINDOW_WIDTH, PAINT_WINDOW_HEIGHT, COLORS)
         self.feedback = GestureFeedback()
-        
-        # Configurar ventanas
+
         cv2.namedWindow(PAINT_WINDOW_NAME, cv2.WINDOW_AUTOSIZE)
-        
-        # Configurar cámara
+
         self.cap = cv2.VideoCapture(0)
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, CAMERA_WIDTH)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, CAMERA_HEIGHT)
@@ -54,6 +52,13 @@ class PaintApp:
     def process_keyboard_input(self):
         """Procesa la entrada del teclado."""
         key = cv2.waitKey(1) & 0xFF
+
+        # Debug: mostrar código de tecla cuando se detecta alguna pulsación
+        if key != 255:
+            try:
+                print(f"Tecla pulsada: code={key} char={chr(key)}")
+            except Exception:
+                print(f"Tecla pulsada: code={key}")
         
         if key == ord("q"):
             self.running = False
@@ -72,6 +77,17 @@ class PaintApp:
         elif key == ord("4"):
             color = self.canvas.set_color(3)
             print(f"Color seleccionado: {color}")
+        # Soportar 'b' minúscula y mayúscula para seleccionar color blanco (o quinto color)
+        elif key in (ord("b"), ord("B")):
+            color = self.canvas.set_color(4)
+            print(f"Color seleccionado: {color}")
+        elif key == ord("e"):
+            # Activar borrador (si está disponible en la configuración)
+            brush_type = self.brush_manager.set_type('BORRADOR')
+            if brush_type:
+                print("Modo borrador activado.")
+            else:
+                print("Borrador no disponible en BRUSH_TYPES.")
         elif key == ord("t"):
             brush_type = self.brush_manager.next_type()
             print(f"Tipo de pincel: {brush_type}")
@@ -105,7 +121,8 @@ class PaintApp:
                 if self.gesture_detector.is_drawing_gesture(landmarks):
                     gesture_detected = True
                     x, y = self.gesture_detector.get_index_tip_position(landmarks)
-                    self.canvas.add_point(x, y)
+                    # Pasar el gestor de pinceles para que el canvas guarde el pincel usado
+                    self.canvas.add_point(x, y, self.brush_manager)
                 
                 # Dibujar retroalimentación
                 self.feedback.draw(frame, landmarks, gesture_detected)
@@ -130,8 +147,8 @@ class PaintApp:
             processed_frame, _ = self.process_frame(frame)
             
             # Renderizar canvas
-            current_brush = self.brush_manager.get_current_brush()
-            self.canvas.render(current_brush)
+            # Pasar el gestor de pinceles al canvas para que asigne pinceles a cada trazo
+            self.canvas.render(self.brush_manager)
             
             # Mostrar ventanas
             cv2.imshow(TRACKING_WINDOW_NAME, processed_frame)
@@ -143,7 +160,6 @@ class PaintApp:
         self.cleanup()
     
     def cleanup(self):
-        """Limpia recursos antes de cerrar."""
         self.cap.release()
         cv2.destroyAllWindows()
         self.gesture_detector.close()
@@ -151,7 +167,6 @@ class PaintApp:
 
 
 def main():
-    """Punto de entrada de la aplicación."""
     app = PaintApp()
     app.run()
 

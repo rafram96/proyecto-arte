@@ -13,6 +13,7 @@ class Brush(ABC):
     
     def __init__(self, size):
         self.size = size
+        self.style = None
     
     @abstractmethod
     def draw(self, canvas, p1, p2, color):
@@ -30,6 +31,9 @@ class Brush(ABC):
 
 class LineBrush(Brush):
     """Pincel de línea continua."""
+    def __init__(self, size):
+        super().__init__(size)
+        self.style = 'line'
     
     def draw(self, canvas, p1, p2, color):
         if p1 is None or p2 is None:
@@ -39,6 +43,9 @@ class LineBrush(Brush):
 
 class DabBrush(Brush):
     """Pincel con efecto impresionista (dabs)."""
+    def __init__(self, size):
+        super().__init__(size)
+        self.style = 'dab'
     
     def draw(self, canvas, p1, p2, color):
         if p1 is None or p2 is None:
@@ -66,6 +73,13 @@ class DabBrush(Brush):
             cv2.circle(canvas, (final_dab_x, final_dab_y), dab_radius, color, -1)
 
 
+class EraserBrush(LineBrush):
+    """Pincel que actúa como borrador (pinta con el color de fondo)."""
+    def __init__(self, size):
+        super().__init__(size)
+        self.style = 'eraser'
+
+
 class BrushManager:
     """Gestiona los diferentes tipos de pinceles."""
     
@@ -76,7 +90,8 @@ class BrushManager:
         self.current_size_index = 0
         self._brushes = {
             'LINEA': LineBrush,
-            'DAB': DabBrush
+            'DAB': DabBrush,
+            'BORRADOR': EraserBrush
         }
     
     def get_current_brush(self):
@@ -95,6 +110,13 @@ class BrushManager:
         """Cambia al siguiente tamaño de pincel."""
         self.current_size_index = (self.current_size_index + 1) % len(self.brush_sizes)
         return self.get_current_size()
+
+    def set_type(self, type_name):
+        """Fija el tipo de pincel por nombre si existe."""
+        if type_name in self.brush_types:
+            self.current_type_index = self.brush_types.index(type_name)
+            return self.get_current_type_name()
+        return None
     
     def get_current_type_name(self):
         """Retorna el nombre del tipo de pincel actual."""

@@ -27,13 +27,15 @@ COLORS = {
     'AZUL': (255, 0, 0),
     'VERDE': (0, 255, 0),
     'ROJO': (0, 0, 255),
-    'AMARILLO': (0, 255, 255)
+    'AMARILLO': (0, 255, 255),
+    'BLANCO': (255, 255, 255)
 }
 
-COLOR_NAMES = ["AZUL", "VERDE", "ROJO", "AMARILLO"]
+# Mantener una lista de nombres consistente con el dict COLORS
+COLOR_NAMES = list(COLORS.keys())
 
 # Tipos de pincel disponibles
-BRUSH_TYPES = ["LINEA", "DAB"]
+BRUSH_TYPES = ["LINEA", "DAB", "BORRADOR"]
 
 # Tamaños de pincel disponibles
 BRUSH_SIZES = [2, 5, 10]  # Pequeño, Mediano, Grande
