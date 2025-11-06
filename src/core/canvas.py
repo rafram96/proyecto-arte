@@ -120,6 +120,21 @@ class Canvas:
                 p1 = pts[k - 1]
                 p2 = pts[k]
                 brush.draw(self.image, p1, p2, color_bgr)
+
+        # Visualizar la marca del borrador: dibujar círculos semi-transparentes donde pasaron los trazos de borrador
+        if eraser_strokes:
+            overlay = self.image.copy()
+            for es in eraser_strokes:
+                radius = max(1, int(es.get('brush_size', 8)))
+                for p in es['points']:
+                    # Asegurar que el punto está dentro de la imagen
+                    x, y = int(p[0]), int(p[1])
+                    if 0 <= x < self.width and 0 <= y < self.height:
+                        cv2.circle(overlay, (x, y), radius, (255, 255, 255), -1)
+
+            # Mezclar overlay con la imagen para crear efecto semitransparente
+            alpha = 0.75
+            cv2.addWeighted(overlay, alpha, self.image, 1 - alpha, 0, self.image)
     
     def set_color(self, color_index):
         """

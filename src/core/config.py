@@ -22,6 +22,15 @@ MIN_TRACKING_CONFIDENCE = 0.5
 # Un valor más bajo la hace más estricta
 FLEXIBILITY_THRESHOLD = 0.02
 
+# Suavizado para landmarks (posición de la punta del índice). Valor entre 0 y 1.
+# Más alto = más respuesta (menos suavizado). Más bajo = menos jitter.
+LANDMARK_SMOOTHING_ALPHA = 0.25
+
+# Ajustes más estrictos para la detección/tracking por defecto (mejor estabilidad)
+MIN_DETECTION_CONFIDENCE = 0.6
+MIN_TRACKING_CONFIDENCE = 0.7
+FLEXIBILITY_THRESHOLD = 0.03
+
 # Colores disponibles (B, G, R, Y) - OpenCV usa BGR
 COLORS = {
     'AZUL': (255, 0, 0),

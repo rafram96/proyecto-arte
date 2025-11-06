@@ -3,7 +3,13 @@ Detector de gestos usando MediaPipe Hands.
 """
 
 import mediapipe as mp
-from .config import FLEXIBILITY_THRESHOLD
+from .config import (
+    FLEXIBILITY_THRESHOLD,
+    MAX_NUM_HANDS,
+    MIN_DETECTION_CONFIDENCE,
+    MIN_TRACKING_CONFIDENCE,
+    LANDMARK_SMOOTHING_ALPHA,
+)
 
 
 class GestureDetector:
@@ -12,10 +18,12 @@ class GestureDetector:
     def __init__(self):
         self.mp_hands = mp.solutions.hands
         self.hands = self.mp_hands.Hands(
-            max_num_hands=1,
-            min_detection_confidence=0.4,
-            min_tracking_confidence=0.5
+            max_num_hands=MAX_NUM_HANDS,
+            min_detection_confidence=MIN_DETECTION_CONFIDENCE,
+            min_tracking_confidence=MIN_TRACKING_CONFIDENCE
         )
+        # Para suavizar la posición de la punta del índice y reducir jitter
+        self._last_index_tip = None
     
     def process_frame(self, rgb_frame):
         """
@@ -55,6 +63,7 @@ class GestureDetector:
         )
         
         # 2. Dedos corazón, anular y meñique flexionados
+        # Requerimos que corazón y anular estén flexionados; el meñique se ignora
         middle_flexed = (
             get_y(mp_hands.HandLandmark.MIDDLE_FINGER_TIP) > 
             get_y(mp_hands.HandLandmark.MIDDLE_FINGER_PIP) + FLEXIBILITY_THRESHOLD
@@ -63,12 +72,8 @@ class GestureDetector:
             get_y(mp_hands.HandLandmark.RING_FINGER_TIP) > 
             get_y(mp_hands.HandLandmark.RING_FINGER_PIP) + FLEXIBILITY_THRESHOLD
         )
-        pinky_flexed = (
-            get_y(mp_hands.HandLandmark.PINKY_TIP) > 
-            get_y(mp_hands.HandLandmark.PINKY_PIP) + FLEXIBILITY_THRESHOLD
-        )
-        
-        return index_extended and middle_flexed and ring_flexed and pinky_flexed
+
+        return index_extended and middle_flexed and ring_flexed
     
     @staticmethod
     def get_index_tip_position(landmarks):
@@ -81,9 +86,27 @@ class GestureDetector:
         Returns:
             tuple: (x, y) coordenadas normalizadas (0-1)
         """
+        # Nota: este método fue estático; lo convertimos a instancia para aplicar suavizado
+        raise RuntimeError("Use instance method get_index_tip_position on GestureDetector instance")
+
+    def get_index_tip_position(self, landmarks):
+        """
+        Obtiene la posición normalizada de la punta del dedo índice con suavizado temporal.
+        """
         mp_hands = mp.solutions.hands
         index_tip = landmarks[mp_hands.HandLandmark.INDEX_FINGER_TIP]
-        return (index_tip.x, index_tip.y)
+        x, y = (index_tip.x, index_tip.y)
+
+        if self._last_index_tip is None:
+            self._last_index_tip = (x, y)
+            return (x, y)
+
+        alpha = LANDMARK_SMOOTHING_ALPHA
+        last_x, last_y = self._last_index_tip
+        sm_x = last_x * (1 - alpha) + x * alpha
+        sm_y = last_y * (1 - alpha) + y * alpha
+        self._last_index_tip = (sm_x, sm_y)
+        return (sm_x, sm_y)
     
     def close(self):
         """Libera recursos de MediaPipe."""

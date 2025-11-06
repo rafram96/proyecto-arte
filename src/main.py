@@ -49,7 +49,7 @@ class PaintApp:
         print(" 's': Cambiar tamaño de pincel (PEQUEÑO / MEDIANO / GRANDE)")
         print("\n--- Dibujo con la Mano ---")
         print("Para dibujar, extiende SOLO tu dedo índice.")
-        print("Los dedos corazón, anular y meñique deben estar flexionados hacia la palma.")
+        print("Los dedos corazón y anular deben estar flexionados hacia la palma. (El meñique se ignora)")
         print("Observa el feedback visual en la ventana 'Tracking' para ajustar tu mano.")
         print("=" * 80)
     
