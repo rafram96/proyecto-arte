@@ -66,6 +66,17 @@ class DabBrush(Brush):
             cv2.circle(canvas, (final_dab_x, final_dab_y), dab_radius, color, -1)
 
 
+class EraserBrush(Brush):
+    """Pincel borrador — no dibuja, el borrado se maneja a nivel de Canvas.
+
+    Implementamos un draw no-op para compatibilidad con la interfaz.
+    """
+
+    def draw(self, canvas, p1, p2, color):
+        # El borrador no pinta aquí; la lógica de eliminación la gestiona Canvas
+        return
+
+
 class BrushManager:
     """Gestiona los diferentes tipos de pinceles."""
     
@@ -78,11 +89,20 @@ class BrushManager:
             'LINEA': LineBrush,
             'DAB': DabBrush
         }
+
+        # Registrar borrador si está declarado en tipos
+        if 'ERASER' in self.brush_types:
+            self._brushes['ERASER'] = EraserBrush
     
     def get_current_brush(self):
         """Retorna el pincel actual configurado."""
         brush_type = self.brush_types[self.current_type_index]
         brush_size = self.brush_sizes[self.current_size_index]
+        brush_class = self._brushes.get(brush_type, LineBrush)
+        return brush_class(brush_size)
+
+    def get_brush_by_name(self, brush_type, brush_size):
+        """Retorna una instancia de pincel por nombre y tamaño."""
         brush_class = self._brushes.get(brush_type, LineBrush)
         return brush_class(brush_size)
     

@@ -33,6 +33,8 @@ class PaintApp:
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, CAMERA_HEIGHT)
         
         self.running = True
+        # Estado previo del gesto para detectar inicio/fin de trazo
+        self._prev_gesture = False
     
     def print_instructions(self):
         """Imprime las instrucciones de uso."""
@@ -105,14 +107,24 @@ class PaintApp:
                 if self.gesture_detector.is_drawing_gesture(landmarks):
                     gesture_detected = True
                     x, y = self.gesture_detector.get_index_tip_position(landmarks)
+                    # Si el gesto acaba de comenzar, iniciar un nuevo trazo con la configuración actual
+                    if not self._prev_gesture:
+                        color_name = self.canvas.get_current_color_name()
+                        brush_type = self.brush_manager.get_current_type_name()
+                        brush_size = self.brush_manager.get_current_size()
+                        self.canvas.start_stroke(color_name, brush_type, brush_size)
+
                     self.canvas.add_point(x, y)
                 
                 # Dibujar retroalimentación
                 self.feedback.draw(frame, landmarks, gesture_detected)
         
-        if not gesture_detected:
-            # Romper el trazo actual cuando no hay gesto
+        if not gesture_detected and self._prev_gesture:
+            # Romper el trazo actual cuando el gesto terminó
             self.canvas.break_current_stroke()
+
+        # Actualizar estado previo
+        self._prev_gesture = gesture_detected
         
         return frame, gesture_detected
     
@@ -130,8 +142,8 @@ class PaintApp:
             processed_frame, _ = self.process_frame(frame)
             
             # Renderizar canvas
-            current_brush = self.brush_manager.get_current_brush()
-            self.canvas.render(current_brush)
+            # Pasamos el manager para que Canvas use el pincel correcto por trazo
+            self.canvas.render(self.brush_manager)
             
             # Mostrar ventanas
             cv2.imshow(TRACKING_WINDOW_NAME, processed_frame)

@@ -33,7 +33,7 @@ COLORS = {
 COLOR_NAMES = ["AZUL", "VERDE", "ROJO", "AMARILLO"]
 
 # Tipos de pincel disponibles
-BRUSH_TYPES = ["LINEA", "DAB"]
+BRUSH_TYPES = ["LINEA", "DAB", "ERASER"]
 
 # Tamaños de pincel disponibles
 BRUSH_SIZES = [2, 5, 10]  # Pequeño, Mediano, Grande
@@ -49,3 +49,9 @@ FEEDBACK_CIRCLE_RADIUS = 5
 
 # Configuración de deques para trazos
 MAX_POINTS_PER_STROKE = 1024
+
+# Parámetro de suavizado para puntos (valor entre 0 y 1). Más cercano a 0 = más suavizado.
+SMOOTHING_ALPHA = 0.35
+
+# Distancia (en píxeles) usada por el borrador para eliminar trazos cercanos
+ERASER_DISTANCE_THRESHOLD = 12
