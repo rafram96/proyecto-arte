@@ -1,3 +1,0 @@
-"""
-Tests del proyecto.
-"""
