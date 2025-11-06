@@ -64,3 +64,15 @@ SMOOTHING_ALPHA = 0.35
 
 # Distancia (en píxeles) usada por el borrador para eliminar trazos cercanos
 ERASER_DISTANCE_THRESHOLD = 12
+
+# UI: parámetros para la barra superior de selección
+UI_TOP_PADDING = 8
+UI_BOX_SIZE = 48
+UI_BOX_SPACING = 8
+
+# Umbral para detectar "pinch" entre índice y medio (distancia normalizada 0..1)
+# Si la distancia entre puntas es menor que este umbral, consideramos que están juntas.
+PINCH_DISTANCE_THRESHOLD = 0.045
+
+# Número de frames que permitimos perder la mano antes de terminar un trazo
+MAX_LOST_HAND_FRAMES = 6

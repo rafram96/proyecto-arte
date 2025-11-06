@@ -107,6 +107,26 @@ class GestureDetector:
         sm_y = last_y * (1 - alpha) + y * alpha
         self._last_index_tip = (sm_x, sm_y)
         return (sm_x, sm_y)
+
+    def is_pinch(self, landmarks):
+        """
+        Detecta si índice y medio están juntos (pinch) independientemente de la mano (izq/der).
+
+        Args:
+            landmarks: Landmarks de la mano detectada
+
+        Returns:
+            bool: True si la distancia normalizada entre punta índice y punta medio < umbral
+        """
+        mp_hands = mp.solutions.hands
+        idx = landmarks[mp_hands.HandLandmark.INDEX_FINGER_TIP]
+        mid = landmarks[mp_hands.HandLandmark.MIDDLE_FINGER_TIP]
+
+        dx = idx.x - mid.x
+        dy = idx.y - mid.y
+        dist = (dx * dx + dy * dy) ** 0.5
+        from .config import PINCH_DISTANCE_THRESHOLD
+        return dist < PINCH_DISTANCE_THRESHOLD
     
     def close(self):
         """Libera recursos de MediaPipe."""
