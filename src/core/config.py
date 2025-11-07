@@ -36,10 +36,14 @@ COLORS = {
     'AZUL': (255, 0, 0),
     'VERDE': (0, 255, 0),
     'ROJO': (0, 0, 255),
-    'AMARILLO': (0, 255, 255)
+    'AMARILLO': (0, 255, 255),
+    'NEGRO': (0, 0, 0),
+    'BLANCO': (255, 255, 255),
+    'PURPURA': (255, 0, 255),
+    'NARANJA': (0, 128, 255)
 }
 
-COLOR_NAMES = ["AZUL", "VERDE", "ROJO", "AMARILLO"]
+COLOR_NAMES = ["AZUL", "VERDE", "ROJO", "AMARILLO", "NEGRO", "BLANCO", "PURPURA", "NARANJA"]
 
 # Tipos de pincel disponibles
 BRUSH_TYPES = ["LINEA", "DAB", "ERASER"]

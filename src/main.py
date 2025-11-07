@@ -336,12 +336,18 @@ class PaintApp:
             # borde
             cv2.rectangle(img, (x, y), (x + w, y + h), (50, 50, 50), 1)
 
-            # etiqueta
+            # etiqueta: usar etiquetas explícitas para evitar confusiones
             label = ''
             if it['type'] == 'tool' and it['value'] == 'ERASER':
                 label = 'E'
             elif it['type'] == 'brush':
-                label = it['value'][0]
+                # mapear nombres de pincel a letra clara
+                brush_label_map = {
+                    'LINEA': 'L',
+                    'DAB': 'D',
+                    'ERASER': 'E'
+                }
+                label = brush_label_map.get(it['value'], it['value'][0])
             elif it['type'] == 'size':
                 label = str(it['value'])
             elif it['type'] == 'color':
@@ -404,13 +410,9 @@ class PaintApp:
             candidate = self._get_item_at(ui_items, px, py)
             self._pinch_candidate = candidate
         elif not current_pinch and prev:
-            # pinch liberado -> confirmar selección si es el mismo item
-            current = self._get_item_at(ui_items, px, py)
-            if self._pinch_candidate is not None and current is not None:
-                # comparar por tipo+value
-                if (self._pinch_candidate.get('type') == current.get('type') and
-                        self._pinch_candidate.get('value') == current.get('value')):
-                    self._apply_selection(current)
+            # pinch liberado -> confirmar selección del candidato guardado (si existe)
+            if self._pinch_candidate is not None:
+                self._apply_selection(self._pinch_candidate)
             self._pinch_candidate = None
 
         # actualizar estado
