@@ -1,3 +1,10 @@
 opencv-python>=4.8.0
 mediapipe>=0.10.0
 numpy>=1.24.0
+SpeechRecognition
+pyttsx3~=2.99
+# Nota: en Windows `pyaudio` puede necesitar instalación especial; recomendamos pipwin:
+# pip install pipwin
+# pipwin install pyaudio
+
+sounddevice

@@ -439,3 +439,34 @@ Proyecto educativo - Arte Digital y Nuevos Medios
 **¡Happy painting!** 🎨✨
 
 Para preguntas o sugerencias, revisa la documentación en `CONTRIBUTING.md`
+
+## 🎙️ Control por voz — "Lumi"
+
+Se ha añadido soporte opcional de control por voz mediante la palabra clave "Lumi".
+
+- Modo pasivo: el sistema escucha en segundo plano solo para la palabra clave "Lumi".
+- Modo activo: al detectar "Lumi" el sistema responde "Te escucho" y escucha 1–5 segundos para captar el comando.
+- Comandos soportados (ejemplos):
+   - "Lumi" → activación
+   - "Color morado" / "Color azul" / "Color rojo" → cambia el color
+   - "Modo borrador" / "Borrador" → activa el borrador
+   - "Grosor fino/medio/grande" → cambia el tamaño del pincel
+   - "Limpiar" → borra el lienzo
+   - "Salir" → cierra la aplicación
+
+Confirmación: el sistema reproduce una confirmación hablada (local, mediante pyttsx3) y muestra una notificación visual breve en el lienzo (ej. "Color morado activado").
+
+Dependencias para voz (recomendadas):
+
+```bash
+pip install SpeechRecognition pyttsx3
+# En Windows, PyAudio suele instalarse mejor con pipwin:
+pip install pipwin
+pipwin install pyaudio
+```
+
+Privacidad: por defecto la librería `SpeechRecognition` usa la API de Google (requiere Internet) para reconocimiento. Si prefieres un flujo totalmente offline podemos migrar a VOSK/PocketSphinx — dímelo y lo integro.
+
+Configuración y notas:
+- El módulo de voz es totalmente opcional: si faltan dependencias la aplicación funcionará igual sin voz.
+- Puedes ajustar el idioma en `utils/voice_listener.py` pasando otro código (p. ej. `en-US`).

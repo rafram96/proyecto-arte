@@ -170,6 +170,9 @@ class PaintApp:
             # Si falla importar o iniciar, seguimos sin control por voz
             self.voice_listener = None
             self.voice_feedback = None
+        # Estado para confirmaciones visuales de voz
+        self._last_voice_msg = None
+        self._last_voice_time = 0.0
         
         # Abrir cámara (auto-detección o según --camera)
         try:
@@ -397,6 +400,23 @@ class PaintApp:
         except Exception:
             pass
 
+        # Mensaje visual transitorio de confirmación por voz (3s)
+        try:
+            if getattr(self, '_last_voice_msg', None) and (time.time() - getattr(self, '_last_voice_time', 0)) < 3.0:
+                msg = self._last_voice_msg
+                # fondo semitransparente (simulado con rect opaco)
+                (tw, th), _ = cv2.getTextSize(msg, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2)
+                pad = 12
+                x2 = self.canvas.width - 10
+                y2 = 30
+                x1 = x2 - (tw + pad)
+                y1 = y2 - (th + pad//2)
+                # rectángulo de fondo
+                cv2.rectangle(img, (x1, 5), (x2, y2 + 6), (30, 30, 30), -1)
+                cv2.putText(img, msg, (x1 + 8, y2), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (220, 220, 220), 2, cv2.LINE_AA)
+        except Exception:
+            pass
+
     def _apply_selection(self, item):
         if item is None:
             return
@@ -468,45 +488,78 @@ class PaintApp:
                 try:
                     idx = COLOR_NAMES.index(cname)
                     self.canvas.set_color(idx)
-                    return f"Color {k} activado"
+                    resp = f"Color {k} activado"
+                    self._last_voice_msg = resp
+                    self._last_voice_time = time.time()
+                    return resp
                 except ValueError:
-                    return f"No encuentro el color {k}"
+                    resp = f"No encuentro el color {k}"
+                    self._last_voice_msg = resp
+                    self._last_voice_time = time.time()
+                    return resp
 
         # herramientas
         if 'borrador' in t or 'eraser' in t:
             if 'ERASER' in self.brush_manager.brush_types:
                 self.brush_manager.current_type_index = self.brush_manager.brush_types.index('ERASER')
-                return 'Modo borrador activado'
+                resp = 'Modo borrador activado'
+                self._last_voice_msg = resp
+                self._last_voice_time = time.time()
+                return resp
         if 'línea' in t or 'linea' in t:
             if 'LINEA' in self.brush_manager.brush_types:
                 self.brush_manager.current_type_index = self.brush_manager.brush_types.index('LINEA')
-                return 'Pincel línea activado'
+                resp = 'Pincel línea activado'
+                self._last_voice_msg = resp
+                self._last_voice_time = time.time()
+                return resp
         if 'dab' in t or 'punteado' in t:
             if 'DAB' in self.brush_manager.brush_types:
                 self.brush_manager.current_type_index = self.brush_manager.brush_types.index('DAB')
-                return 'Pincel punteado activado'
+                resp = 'Pincel punteado activado'
+                self._last_voice_msg = resp
+                self._last_voice_time = time.time()
+                return resp
 
         # grosores
         if 'peque' in t or 'fino' in t:
             self.brush_manager.current_size_index = 0
-            return 'Grosor fino'
+            resp = 'Grosor fino'
+            self._last_voice_msg = resp
+            self._last_voice_time = time.time()
+            return resp
         if 'medio' in t or 'mediano' in t:
             self.brush_manager.current_size_index = 1 if len(self.brush_manager.brush_sizes) > 1 else 0
-            return 'Grosor medio'
+            resp = 'Grosor medio'
+            self._last_voice_msg = resp
+            self._last_voice_time = time.time()
+            return resp
         if 'grande' in t or 'gordo' in t or 'grueso' in t:
             self.brush_manager.current_size_index = max(0, len(self.brush_manager.brush_sizes) - 1)
-            return 'Grosor grande'
+            resp = 'Grosor grande'
+            self._last_voice_msg = resp
+            self._last_voice_time = time.time()
+            return resp
 
         # limpiar / salir
         if 'limpiar' in t or 'borrar todo' in t or 'borrar lienzo' in t:
             self.canvas.clear()
-            return 'Lienzo borrado'
+            resp = 'Lienzo borrado'
+            self._last_voice_msg = resp
+            self._last_voice_time = time.time()
+            return resp
         if 'salir' in t or 'cerrar' in t or 'terminar' in t:
             self.running = False
-            return 'Cerrando la aplicación'
+            resp = 'Cerrando la aplicación'
+            self._last_voice_msg = resp
+            self._last_voice_time = time.time()
+            return resp
 
-        return 'No entendí el comando'
-    
+        resp = 'No entendí el comando'
+        self._last_voice_msg = resp
+        self._last_voice_time = time.time()
+        return resp
+
     def run(self):
         """Ejecuta el bucle principal de la aplicación."""
         self.print_instructions()
