@@ -41,6 +41,10 @@ class PaintApp:
         self._pinch_candidate = None
         # Última posición del índice reportada (normalizada 0..1)
         self._last_pointer = None
+        # Estado para zoom/pan
+        self._zoom_prev_metric = None
+        self._pan_last_pointer = None
+        self._pan_active = False
     
     def print_instructions(self):
         """Imprime las instrucciones de uso."""
@@ -114,6 +118,36 @@ class PaintApp:
                 # Actualizar estado de pinch y posición del índice (siempre)
                 current_pinch = self.gesture_detector.is_pinch(landmarks)
                 current_pointer = self.gesture_detector.get_index_tip_position(landmarks)
+
+                # Zoom gesture
+                if self.gesture_detector.is_zoom_gesture(landmarks):
+                    metric = self.gesture_detector.get_zoom_metric(landmarks)
+                    if self._zoom_prev_metric is not None and metric > 1e-6:
+                        factor = metric / (self._zoom_prev_metric + 1e-9)
+                        # Limitar factor para evitar saltos
+                        factor = max(0.9, min(1.15, factor))
+                        # Centro del zoom: usar el punto medio entre índice y medio
+                        mp_hands = self.gesture_detector.mp_hands
+                        idx = landmarks[mp_hands.HandLandmark.INDEX_FINGER_TIP]
+                        mid = landmarks[mp_hands.HandLandmark.MIDDLE_FINGER_TIP]
+                        center_world = ((idx.x + mid.x) / 2.0, (idx.y + mid.y) / 2.0)
+                        self.canvas.zoom(factor, center_world=center_world)
+                    self._zoom_prev_metric = metric
+                else:
+                    self._zoom_prev_metric = None
+
+                # Pan gesture
+                if self.gesture_detector.is_pan_gesture(landmarks):
+                    if self._pan_last_pointer is not None:
+                        dx = current_pointer[0] - self._pan_last_pointer[0]
+                        dy = current_pointer[1] - self._pan_last_pointer[1]
+                        # Aplicar pan: mover la vista en sentido contrario al movimiento del dedo
+                        self.canvas.pan(-dx, -dy)
+                    self._pan_last_pointer = current_pointer
+                    self._pan_active = True
+                else:
+                    self._pan_last_pointer = None
+                    self._pan_active = False
 
                 if self.gesture_detector.is_drawing_gesture(landmarks):
                     gesture_detected = True

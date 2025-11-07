@@ -25,6 +25,10 @@ class Canvas:
         # Cada trazo: {'points': deque, 'color': str, 'brush_type': str, 'brush_size': int}
         self.strokes = []
         self.current_stroke = None
+        # Vista (offset en coordenadas normalizadas y escala)
+        # view_offset describe la esquina superior izquierda en coordenadas normalizadas
+        self.view_offset = (0.0, 0.0)
+        self.view_scale = 1.0
     
     def clear(self):
         """Borra todo el lienzo y reinicia los trazos."""
@@ -42,7 +46,7 @@ class Canvas:
         """
         paint_x = int(normalized_x * self.width)
         paint_y = int(normalized_y * self.height)
-        point = (paint_x, paint_y)
+    # Nota: almacenamos puntos en coordenadas del mundo (normalizadas), no en píxeles
         
         # Si no hay trazo actual, crear uno con las propiedades actuales
         if self.current_stroke is None:
@@ -50,16 +54,17 @@ class Canvas:
             color_name = self.color_names[self.current_color_index]
             self.start_stroke(color_name, 'LINEA', self.width // 200 or 2)
 
-        # Aplicar suavizado simple: promedio entre último punto y nuevo
+        # Guardar en coordenadas de mundo (normalizadas) y aplicar suavizado simple
         pts = self.current_stroke['points']
+        world_point = (float(normalized_x), float(normalized_y))
         if len(pts) > 0:
             last = pts[0]
-            smoothed_x = int(last[0] * (1 - SMOOTHING_ALPHA) + point[0] * SMOOTHING_ALPHA)
-            smoothed_y = int(last[1] * (1 - SMOOTHING_ALPHA) + point[1] * SMOOTHING_ALPHA)
+            smoothed_x = last[0] * (1 - SMOOTHING_ALPHA) + world_point[0] * SMOOTHING_ALPHA
+            smoothed_y = last[1] * (1 - SMOOTHING_ALPHA) + world_point[1] * SMOOTHING_ALPHA
             smoothed = (smoothed_x, smoothed_y)
             pts.appendleft(smoothed)
         else:
-            pts.appendleft(point)
+            pts.appendleft(world_point)
     
     def break_current_stroke(self):
         """Termina el trazo actual."""
@@ -116,19 +121,31 @@ class Canvas:
             color_bgr = self.colors.get(stroke['color'], (0, 0, 0))
             brush = brush_manager.get_brush_by_name(stroke['brush_type'], stroke['brush_size'])
             pts = stroke['points']
-            for k in range(1, len(pts)):
-                p1 = pts[k - 1]
-                p2 = pts[k]
+            # Mapear puntos de mundo (normalizados) a coordenadas de pantalla
+            screen_pts = []
+            ox, oy = self.view_offset
+            s = self.view_scale
+            for p in pts:
+                sx = int((p[0] - ox) * s * self.width)
+                sy = int((p[1] - oy) * s * self.height)
+                screen_pts.append((sx, sy))
+
+            for k in range(1, len(screen_pts)):
+                p1 = screen_pts[k - 1]
+                p2 = screen_pts[k]
                 brush.draw(self.image, p1, p2, color_bgr)
 
         # Visualizar la marca del borrador: dibujar círculos semi-transparentes donde pasaron los trazos de borrador
         if eraser_strokes:
             overlay = self.image.copy()
+            ox, oy = self.view_offset
+            s = self.view_scale
             for es in eraser_strokes:
                 radius = max(1, int(es.get('brush_size', 8)))
                 for p in es['points']:
-                    # Asegurar que el punto está dentro de la imagen
-                    x, y = int(p[0]), int(p[1])
+                    # Mapear punto mundo->pantalla
+                    x = int((p[0] - ox) * s * self.width)
+                    y = int((p[1] - oy) * s * self.height)
                     if 0 <= x < self.width and 0 <= y < self.height:
                         cv2.circle(overlay, (x, y), radius, (255, 255, 255), -1)
 
@@ -173,11 +190,46 @@ class Canvas:
         if not pts1 or not pts2:
             return False
 
+        # Convertir puntos de mundo a pantalla para medir en píxeles
+        ox, oy = self.view_offset
+        s = self.view_scale
         thr2 = threshold * threshold
         for p1 in pts1:
+            x1 = (p1[0] - ox) * s * self.width
+            y1 = (p1[1] - oy) * s * self.height
             for p2 in pts2:
-                dx = p1[0] - p2[0]
-                dy = p1[1] - p2[1]
+                x2 = (p2[0] - ox) * s * self.width
+                y2 = (p2[1] - oy) * s * self.height
+                dx = x1 - x2
+                dy = y1 - y2
                 if dx * dx + dy * dy <= thr2:
                     return True
         return False
+
+    # Métodos de vista: pan y zoom
+    def pan(self, delta_world_x, delta_world_y):
+        """Mueve la vista en coordenadas del mundo (normalizadas)."""
+        ox, oy = self.view_offset
+        self.view_offset = (ox + float(delta_world_x), oy + float(delta_world_y))
+
+    def zoom(self, factor, center_world=None, min_scale=0.2, max_scale=6.0):
+        """Hace zoom respecto a un punto del mundo (center_world en coordenadas normalizadas).
+
+        factor > 1 -> zoom in; factor < 1 -> zoom out
+        """
+        if factor <= 0:
+            return
+        if center_world is None:
+            center_world = (self.view_offset[0] + 0.5 / self.view_scale, self.view_offset[1] + 0.5 / self.view_scale)
+
+        # Convertir para mantener el center_world fijo en pantalla
+        ox, oy = self.view_offset
+        cx, cy = center_world
+        new_scale = max(min_scale, min(max_scale, self.view_scale * factor))
+        # Ajustar offset para que el punto center_world permanezca en el mismo lugar de pantalla
+        # pantalla = (world - ox) * s -> ox' = world - pantalla / s'
+        self.view_offset = (
+            cx - (cx - ox) * (self.view_scale / new_scale),
+            cy - (cy - oy) * (self.view_scale / new_scale)
+        )
+        self.view_scale = new_scale

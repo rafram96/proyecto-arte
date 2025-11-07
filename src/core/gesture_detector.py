@@ -127,6 +127,46 @@ class GestureDetector:
         dist = (dx * dx + dy * dy) ** 0.5
         from .config import PINCH_DISTANCE_THRESHOLD
         return dist < PINCH_DISTANCE_THRESHOLD
+
+    def _is_finger_extended(self, landmarks, tip_idx, pip_idx, mcp_idx):
+        mp_hands = mp.solutions.hands
+        def get_y(i):
+            return landmarks[i].y
+        return (get_y(tip_idx) < get_y(pip_idx) - FLEXIBILITY_THRESHOLD) and (get_y(pip_idx) < get_y(mcp_idx) - FLEXIBILITY_THRESHOLD)
+
+    def is_zoom_gesture(self, landmarks):
+        """Detecta si está activo el gesto de zoom (pulgar + índice + medio extendidos)."""
+        mp_hands = mp.solutions.hands
+        # índice y medio extendidos
+        idx_ext = self._is_finger_extended(landmarks, mp_hands.HandLandmark.INDEX_FINGER_TIP, mp_hands.HandLandmark.INDEX_FINGER_PIP, mp_hands.HandLandmark.INDEX_FINGER_MCP)
+        mid_ext = self._is_finger_extended(landmarks, mp_hands.HandLandmark.MIDDLE_FINGER_TIP, mp_hands.HandLandmark.MIDDLE_FINGER_PIP, mp_hands.HandLandmark.MIDDLE_FINGER_MCP)
+        # para pulgar, comprobación simple: distancia entre tip e IP mayor que umbral
+        thumb_tip = landmarks[mp_hands.HandLandmark.THUMB_TIP]
+        thumb_ip = landmarks[mp_hands.HandLandmark.THUMB_IP]
+        dx = thumb_tip.x - thumb_ip.x
+        dy = thumb_tip.y - thumb_ip.y
+        dist = (dx * dx + dy * dy) ** 0.5
+        # umbral de extensión para pulgar (normalizado)
+        thumb_thresh = 0.03
+        thumb_ext = dist > thumb_thresh
+        return idx_ext and mid_ext and thumb_ext
+
+    def get_zoom_metric(self, landmarks):
+        """Métrica para zoom: distancia (normalizada) entre punta de índice y punta de medio."""
+        mp_hands = mp.solutions.hands
+        idx = landmarks[mp_hands.HandLandmark.INDEX_FINGER_TIP]
+        mid = landmarks[mp_hands.HandLandmark.MIDDLE_FINGER_TIP]
+        dx = idx.x - mid.x
+        dy = idx.y - mid.y
+        return (dx * dx + dy * dy) ** 0.5
+
+    def is_pan_gesture(self, landmarks):
+        """Detecta el gesto de pan (índice + medio + anular extendidos)."""
+        mp_hands = mp.solutions.hands
+        idx_ext = self._is_finger_extended(landmarks, mp_hands.HandLandmark.INDEX_FINGER_TIP, mp_hands.HandLandmark.INDEX_FINGER_PIP, mp_hands.HandLandmark.INDEX_FINGER_MCP)
+        mid_ext = self._is_finger_extended(landmarks, mp_hands.HandLandmark.MIDDLE_FINGER_TIP, mp_hands.HandLandmark.MIDDLE_FINGER_PIP, mp_hands.HandLandmark.MIDDLE_FINGER_MCP)
+        ring_ext = self._is_finger_extended(landmarks, mp_hands.HandLandmark.RING_FINGER_TIP, mp_hands.HandLandmark.RING_FINGER_PIP, mp_hands.HandLandmark.RING_FINGER_MCP)
+        return idx_ext and mid_ext and ring_ext
     
     def close(self):
         """Libera recursos de MediaPipe."""
