@@ -154,6 +154,22 @@ class PaintApp:
         
         # Configurar ventanas
         cv2.namedWindow(PAINT_WINDOW_NAME, cv2.WINDOW_AUTOSIZE)
+
+        # Inicializar control de voz (opcional). Import dinámico para evitar fallos si faltan dependencias.
+        self.voice_listener = None
+        self.voice_feedback = None
+        try:
+            from utils.voice_feedback import VoiceFeedback
+            from utils.voice_listener import VoiceListener
+            self.voice_feedback = VoiceFeedback()
+            # command_callback será un método de la instancia
+            self.voice_listener = VoiceListener(command_callback=self._on_voice_command, feedback=self.voice_feedback, language='es-ES')
+            self.voice_listener.start()
+            print("Voice control: listener started (Lumi).")
+        except Exception:
+            # Si falla importar o iniciar, seguimos sin control por voz
+            self.voice_listener = None
+            self.voice_feedback = None
         
         # Abrir cámara (auto-detección o según --camera)
         try:
@@ -368,6 +384,19 @@ class PaintApp:
             # pointer circle
             cv2.circle(img, (px, py), 6, (0, 0, 255) if pinch else (0, 255, 0), -1)
 
+        # Mostrar estado de voz (discreto, parte inferior izquierda)
+        try:
+            vl = getattr(self, 'voice_listener', None)
+            if vl is not None:
+                if getattr(vl, 'state', 'passive') == 'active':
+                    cv2.putText(img, "🎙 Lumi escuchando...", (10, self.canvas.height - 10),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 220, 0), 2, cv2.LINE_AA)
+                else:
+                    cv2.putText(img, "🎙 Lumi", (10, self.canvas.height - 10),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (180, 180, 180), 1, cv2.LINE_AA)
+        except Exception:
+            pass
+
     def _apply_selection(self, item):
         if item is None:
             return
@@ -417,6 +446,66 @@ class PaintApp:
 
         # actualizar estado
         self._prev_pinch = current_pinch
+
+    def _on_voice_command(self, text):
+        """Handler de comandos reconocidos por voz.
+
+        Recibe el texto y aplica acciones: color, herramienta, tamaño, limpiar, salir.
+        Debe devolver un string con la respuesta que se hablará (o None).
+        """
+        if not text:
+            return None
+        t = text.lower()
+
+        # mapa sencillo de colores
+        color_map = {
+            'azul': 'AZUL', 'verde': 'VERDE', 'rojo': 'ROJO', 'amarillo': 'AMARILLO',
+            'negro': 'NEGRO', 'blanco': 'BLANCO', 'púrpura': 'PURPURA', 'purpura': 'PURPURA', 'morado': 'PURPURA', 'naranja': 'NARANJA'
+        }
+
+        for k, cname in color_map.items():
+            if f"color {k}" in t or t.strip() == k or (t.startswith('cambiar a') and k in t):
+                try:
+                    idx = COLOR_NAMES.index(cname)
+                    self.canvas.set_color(idx)
+                    return f"Color {k} activado"
+                except ValueError:
+                    return f"No encuentro el color {k}"
+
+        # herramientas
+        if 'borrador' in t or 'eraser' in t:
+            if 'ERASER' in self.brush_manager.brush_types:
+                self.brush_manager.current_type_index = self.brush_manager.brush_types.index('ERASER')
+                return 'Modo borrador activado'
+        if 'línea' in t or 'linea' in t:
+            if 'LINEA' in self.brush_manager.brush_types:
+                self.brush_manager.current_type_index = self.brush_manager.brush_types.index('LINEA')
+                return 'Pincel línea activado'
+        if 'dab' in t or 'punteado' in t:
+            if 'DAB' in self.brush_manager.brush_types:
+                self.brush_manager.current_type_index = self.brush_manager.brush_types.index('DAB')
+                return 'Pincel punteado activado'
+
+        # grosores
+        if 'peque' in t or 'fino' in t:
+            self.brush_manager.current_size_index = 0
+            return 'Grosor fino'
+        if 'medio' in t or 'mediano' in t:
+            self.brush_manager.current_size_index = 1 if len(self.brush_manager.brush_sizes) > 1 else 0
+            return 'Grosor medio'
+        if 'grande' in t or 'gordo' in t or 'grueso' in t:
+            self.brush_manager.current_size_index = max(0, len(self.brush_manager.brush_sizes) - 1)
+            return 'Grosor grande'
+
+        # limpiar / salir
+        if 'limpiar' in t or 'borrar todo' in t or 'borrar lienzo' in t:
+            self.canvas.clear()
+            return 'Lienzo borrado'
+        if 'salir' in t or 'cerrar' in t or 'terminar' in t:
+            self.running = False
+            return 'Cerrando la aplicación'
+
+        return 'No entendí el comando'
     
     def run(self):
         """Ejecuta el bucle principal de la aplicación."""
@@ -454,6 +543,20 @@ class PaintApp:
     
     def cleanup(self):
         """Limpia recursos antes de cerrar."""
+        # detener voice listener si existe
+        try:
+            if getattr(self, 'voice_listener', None):
+                try:
+                    self.voice_listener.stop()
+                except Exception:
+                    pass
+            if getattr(self, 'voice_feedback', None):
+                try:
+                    self.voice_feedback.stop()
+                except Exception:
+                    pass
+        except Exception:
+            pass
         self.cap.release()
         cv2.destroyAllWindows()
         self.gesture_detector.close()
