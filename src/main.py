@@ -3,6 +3,10 @@ Aplicación principal de pintura con gestos.
 """
 
 import cv2
+import argparse
+import subprocess
+import shutil
+import time
 from core.config import (
     PAINT_WINDOW_WIDTH, PAINT_WINDOW_HEIGHT, PAINT_WINDOW_NAME,
     CAMERA_WIDTH, CAMERA_HEIGHT, TRACKING_WINDOW_NAME,
@@ -13,6 +17,129 @@ from core.gesture_detector import GestureDetector
 from core.brushes import BrushManager
 from core.canvas import Canvas
 from core.feedback import GestureFeedback
+
+
+def _list_directshow_devices_ffmpeg():
+    """Intentar listar dispositivos DirectShow usando ffmpeg (solo Windows)."""
+    ffmpeg = shutil.which("ffmpeg")
+    if not ffmpeg:
+        return []
+    try:
+        p = subprocess.run([ffmpeg, '-list_devices', 'true', '-f', 'dshow', '-i', 'dummy'],
+                           stderr=subprocess.PIPE, stdout=subprocess.PIPE, text=True, timeout=3)
+        out = p.stderr.splitlines()
+        devices = []
+        capture_section = False
+        for line in out:
+            if 'DirectShow video devices' in line:
+                capture_section = True
+                continue
+            if capture_section:
+                if 'DirectShow audio devices' in line:
+                    break
+                if '"' in line:
+                    parts = line.split('"')
+                    if len(parts) >= 2:
+                        name = parts[1].strip()
+                        if name:
+                            devices.append(name)
+        return devices
+    except Exception:
+        return []
+
+
+def open_camera(preferred=None, try_range=8, wait_ms=300):
+    """Abrir cámara de forma robusta en Windows.
+
+    preferred: None, índice (int o string) o cadena tipo 'video=Nombre'
+    """
+    backends = [cv2.CAP_DSHOW, cv2.CAP_MSMF, None]
+
+    def try_open(src, backend=None):
+        try:
+            if backend is None:
+                cap = cv2.VideoCapture(src)
+            else:
+                cap = cv2.VideoCapture(src, backend)
+        except Exception:
+            try:
+                cap = cv2.VideoCapture(src)
+            except Exception:
+                return None
+        if not cap or not cap.isOpened():
+            try:
+                cap.release()
+            except Exception:
+                pass
+            return None
+        # validar que devuelve frames
+        t0 = time.time()
+        ok = False
+        while time.time() - t0 < (wait_ms / 1000.0):
+            ret, _ = cap.read()
+            if ret:
+                ok = True
+                break
+        if not ok:
+            try:
+                cap.release()
+            except Exception:
+                pass
+            return None
+        return cap
+
+    # si prefieren dispositivo
+    if preferred:
+        try:
+            idx = int(preferred)
+            for b in backends:
+                cap = try_open(idx, backend=b)
+                if cap:
+                    print(f"Cámara abierta: index={idx}, backend={b}")
+                    return cap
+        except ValueError:
+            cand = preferred
+            if not cand.lower().startswith("video=") and "video=" not in cand:
+                cand = f'video={preferred}'
+            for b in backends:
+                cap = try_open(cand, backend=b)
+                if cap:
+                    print(f'Camera abierta: device="{cand}", backend={b}')
+                    return cap
+        print(f"No se pudo abrir la cámara solicitada: {preferred} - se intentará autodetección")
+
+    # autodetección por índices
+    for i in range(try_range):
+        for b in backends:
+            cap = try_open(i, backend=b)
+            if cap:
+                print(f"Cámara autodetectada: index={i}, backend={b}")
+                return cap
+
+    # intentar nombres via ffmpeg
+    devices = _list_directshow_devices_ffmpeg()
+    for name in devices:
+        cand = f'video={name}'
+        for b in backends:
+            cap = try_open(cand, backend=b)
+            if cap:
+                print(f"Cámara abierta por nombre: {name} (DirectShow)")
+                return cap
+
+    # índices altos
+    for i in range(try_range, try_range + 20):
+        cap = try_open(i)
+        if cap:
+            print(f"Cámara detectada en índice alto: index={i}")
+            return cap
+
+    raise RuntimeError("No se pudo abrir ninguna cámara disponible.")
+
+
+# parseo de argumentos simple (acepta --camera)
+parser = argparse.ArgumentParser(add_help=False)
+parser.add_argument('--camera', '-c', help='Índice o "video=Nombre" (DirectShow).', default=None)
+args, _unknown = parser.parse_known_args()
 
 
 class PaintApp:
@@ -29,9 +156,19 @@ class PaintApp:
         cv2.namedWindow(PAINT_WINDOW_NAME, cv2.WINDOW_AUTOSIZE)
         
         # Configurar cámara
-        self.cap = cv2.VideoCapture(0)
-        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, CAMERA_WIDTH)
-        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, CAMERA_HEIGHT)
+        # Abrir cámara (auto-detección o según --camera)
+        try:
+            self.cap = open_camera(preferred=args.camera, try_range=8)
+        except Exception as e:
+            print(f"Fallo al abrir cámara automática: {e}. Intentando cámara por defecto index 0")
+            self.cap = cv2.VideoCapture(0)
+
+        # Ajustar resolución deseada (si el dispositivo lo soporta)
+        try:
+            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, CAMERA_WIDTH)
+            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, CAMERA_HEIGHT)
+        except Exception:
+            pass
         
         self.running = True
         # Estado previo del gesto para detectar inicio/fin de trazo
