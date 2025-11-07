@@ -62,18 +62,14 @@ class GestureDetector:
             get_y(mp_hands.HandLandmark.INDEX_FINGER_MCP) - FLEXIBILITY_THRESHOLD
         )
         
-        # 2. Dedos corazón, anular y meñique flexionados
-        # Requerimos que corazón y anular estén flexionados; el meñique se ignora
+        # 2. Requerimos que el dedo medio esté flexionado. No requerimos el anular.
+        # Esto facilita dibujo cuando el anular no queda perfectamente plegado.
         middle_flexed = (
             get_y(mp_hands.HandLandmark.MIDDLE_FINGER_TIP) > 
             get_y(mp_hands.HandLandmark.MIDDLE_FINGER_PIP) + FLEXIBILITY_THRESHOLD
         )
-        ring_flexed = (
-            get_y(mp_hands.HandLandmark.RING_FINGER_TIP) > 
-            get_y(mp_hands.HandLandmark.RING_FINGER_PIP) + FLEXIBILITY_THRESHOLD
-        )
 
-        return index_extended and middle_flexed and ring_flexed
+        return index_extended and middle_flexed
     
     @staticmethod
     def get_index_tip_position(landmarks):

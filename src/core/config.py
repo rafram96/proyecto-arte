@@ -74,6 +74,9 @@ UI_TOP_PADDING = 8
 UI_BOX_SIZE = 48
 UI_BOX_SPACING = 8
 
+# Tiempo (segundos) que hay que mantener el cursor sobre un elemento para seleccionarlo
+HOVER_SELECT_SECONDS = 1.2
+
 # Umbral para detectar "pinch" entre índice y medio (distancia normalizada 0..1)
 # Si la distancia entre puntas es menor que este umbral, consideramos que están juntas.
 PINCH_DISTANCE_THRESHOLD = 0.045

@@ -8,7 +8,7 @@ from core.config import (
     CAMERA_WIDTH, CAMERA_HEIGHT, TRACKING_WINDOW_NAME,
     COLORS, COLOR_NAMES, BRUSH_TYPES, BRUSH_SIZES
 )
-from core.config import UI_TOP_PADDING, UI_BOX_SIZE, UI_BOX_SPACING
+from core.config import UI_TOP_PADDING, UI_BOX_SIZE, UI_BOX_SPACING, HOVER_SELECT_SECONDS
 from core.gesture_detector import GestureDetector
 from core.brushes import BrushManager
 from core.canvas import Canvas
@@ -177,6 +177,32 @@ class PaintApp:
         self._pinch_candidate = None
         # Última posición del índice reportada (normalizada 0..1)
         self._last_pointer = None
+        # Hover (dwell) selection
+        self._hover_candidate = None
+        self._hover_start_time = 0.0
+        # Tiempo en segundos para selección por hover (dwell)
+        self.HOVER_SELECT_SECONDS = HOVER_SELECT_SECONDS
+
+        # Mensajes de voz/visual (último mensaje hablado/mostrado)
+        self._last_voice_msg = None
+        self._last_voice_time = 0.0
+
+        # Inicializar componentes de voz de forma opcional (no rompe si faltan deps)
+        try:
+            from utils.voice_feedback import VoiceFeedback
+            from utils.voice_listener import VoiceListener
+            self.voice_feedback = VoiceFeedback()
+            # VoiceListener acepta callback(text) y tiene start()/stop()
+            self.voice_listener = VoiceListener(callback=self._on_voice_command)
+            # arrancar en modo pasivo
+            try:
+                self.voice_listener.start()
+            except Exception:
+                # si start falla, no bloqueamos la app
+                pass
+        except Exception:
+            self.voice_feedback = None
+            self.voice_listener = None
     
     def print_instructions(self):
         """Imprime las instrucciones de uso."""
@@ -367,6 +393,45 @@ class PaintApp:
 
             # pointer circle
             cv2.circle(img, (px, py), 6, (0, 0, 255) if pinch else (0, 255, 0), -1)
+            # si hay candidato de hover, mostrar progreso dentro del rect
+            try:
+                # Mostrar progreso de hover para cualquier tipo de item (color/tool/brush/size)
+                if self._hover_candidate is not None and hover is not None and self._hover_candidate.get('type') == hover.get('type'):
+                    same = False
+                    if hover.get('type') == 'color':
+                        same = (self._hover_candidate.get('index') == hover.get('index'))
+                    else:
+                        same = (self._hover_candidate.get('value') == hover.get('value'))
+                    if same:
+                        elapsed = time.time() - getattr(self, '_hover_start_time', 0)
+                        remain = max(0.0, self.HOVER_SELECT_SECONDS - elapsed)
+                        # dibujar texto de cuenta regresiva en esquina superior del rect
+                        txt = f"{remain:.1f}s"
+                        cv2.putText(img, txt, (hover['rect'][0] + 6, hover['rect'][1] + 18), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2, cv2.LINE_AA)
+            except Exception:
+                pass
+
+        # Mostrar estado de TTS en la esquina superior derecha (texto con sombra)
+        try:
+            tts_text = 'TTS: none'
+            tts_ok = False
+            if getattr(self, 'voice_feedback', None):
+                try:
+                    st = self.voice_feedback.status()
+                except Exception:
+                    st = 'unknown'
+                tts_text = f'TTS: {st}'
+                tts_ok = self.voice_feedback.available if hasattr(self.voice_feedback, 'available') else (st != 'none')
+
+            # sombra
+            h, w = img.shape[:2]
+            tx = w - 220
+            ty = UI_TOP_PADDING + 16
+            cv2.putText(img, tts_text, (tx + 1, ty + 1), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (10, 10, 10), 3, cv2.LINE_AA)
+            color = (50, 200, 50) if tts_ok else (200, 50, 50)
+            cv2.putText(img, tts_text, (tx, ty), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA)
+        except Exception:
+            pass
 
     def _apply_selection(self, item):
         if item is None:
@@ -391,6 +456,77 @@ class PaintApp:
             if val in self.brush_manager.brush_sizes:
                 self.brush_manager.current_size_index = self.brush_manager.brush_sizes.index(val)
                 print(f"Tamaño seleccionado (UI): {val}")
+
+    def _on_voice_command(self, text):
+        """Manejador de comandos de voz simples en español.
+        Soporta: colores, modos (borrador/linea/dab), tamaños (fino/medio/grande), limpiar, salir.
+        """
+        if not text:
+            return
+        t = text.lower()
+        resp = None
+
+        # Intentar detectar color por nombre
+        try:
+            color_map = {name.lower(): name for name in COLOR_NAMES}
+            # aliases comunes en español
+            color_map.update({'morado': 'PURPURA', 'negro': 'NEGRO', 'blanco': 'BLANCO', 'naranja': 'NARANJA', 'azul': 'AZUL', 'verde':'VERDE', 'rojo':'ROJO', 'amarillo':'AMARILLO'})
+            for k, v in color_map.items():
+                if k in t:
+                    idx = COLOR_NAMES.index(v)
+                    self.canvas.set_color(idx)
+                    resp = f"Elegido color {v.title()}"
+                    break
+        except Exception:
+            pass
+
+        # Herramientas / pinceles
+        if resp is None:
+            if 'borrador' in t or ('eraser' in t and 'todo' not in t):
+                if 'ERASER' in self.brush_manager.brush_types:
+                    self.brush_manager.current_type_index = self.brush_manager.brush_types.index('ERASER')
+                resp = 'Modo borrador activado'
+            elif 'línea' in t or 'linea' in t:
+                if 'LINEA' in self.brush_manager.brush_types:
+                    self.brush_manager.current_type_index = self.brush_manager.brush_types.index('LINEA')
+                resp = 'Pincel línea activado'
+            elif 'punte' in t or 'dab' in t:
+                if 'DAB' in self.brush_manager.brush_types:
+                    self.brush_manager.current_type_index = self.brush_manager.brush_types.index('DAB')
+                resp = 'Pincel punteado activado'
+
+        # Tamaños
+        if resp is None:
+            size_val = None
+            if 'fino' in t:
+                size_val = 2
+            elif 'medio' in t:
+                size_val = 5
+            elif 'grande' in t:
+                size_val = 10
+            if size_val and size_val in self.brush_manager.brush_sizes:
+                self.brush_manager.current_size_index = self.brush_manager.brush_sizes.index(size_val)
+                resp = f'Grosor {"fino" if size_val==2 else ("medio" if size_val==5 else "grande")}'
+
+        # Comandos globales
+        if 'limpiar' in t or 'borrar todo' in t or 'borrar lienzo' in t:
+            self.canvas.clear()
+            resp = 'Lienzo borrado'
+        if 'salir' in t or 'cerrar' in t or 'adiós' in t or 'adios' in t:
+            self.running = False
+            resp = 'Saliendo'
+
+        # Respuesta por voz (si está disponible)
+        if resp and getattr(self, 'voice_feedback', None):
+            try:
+                self.voice_feedback.speak(resp)
+            except Exception:
+                pass
+
+        # Mostrar confirmación visual breve también
+        if resp:
+            self._last_voice_msg = resp
+            self._last_voice_time = time.time()
 
     def _handle_pinch_selection(self, ui_items):
         current_pinch = getattr(self, '_last_pinch', False)
@@ -417,6 +553,91 @@ class PaintApp:
 
         # actualizar estado
         self._prev_pinch = current_pinch
+
+    def _handle_hover_selection(self, ui_items):
+        """Selecciona por 'dwell' si el cursor se mantiene sobre un color durante HOVER_SELECT_SECONDS."""
+        pointer = getattr(self, '_last_pointer', None)
+        if pointer is None:
+            # reset hover
+            self._hover_candidate = None
+            self._hover_start_time = 0.0
+            return
+
+        px = int(max(0, min(1, pointer[0])) * self.canvas.width)
+        py = int(max(0, min(1, pointer[1])) * self.canvas.height)
+        item = self._get_item_at(ui_items, px, py)
+
+        # Consideramos varios tipos para selección por hover: color, tool, brush, size
+        if item is None or item.get('type') not in ('color', 'tool', 'brush', 'size'):
+            self._hover_candidate = None
+            self._hover_start_time = 0.0
+            return
+
+        # si es el mismo candidato, comprobar tiempo
+        is_same = False
+        if self._hover_candidate is not None:
+            if item.get('type') == 'color' and self._hover_candidate.get('type') == 'color':
+                is_same = (self._hover_candidate.get('index') == item.get('index'))
+            else:
+                is_same = (self._hover_candidate.get('value') == item.get('value'))
+
+        if is_same:
+            elapsed = time.time() - self._hover_start_time
+            if elapsed >= self.HOVER_SELECT_SECONDS:
+                # confirmar selección para varios tipos (color, tool, brush, size)
+                self._apply_selection(item)
+                resp = None
+                try:
+                    if item.get('type') == 'color':
+                        human_map = {
+                            'AZUL': 'Azul', 'VERDE': 'Verde', 'ROJO': 'Rojo', 'AMARILLO': 'Amarillo',
+                            'NEGRO': 'Negro', 'BLANCO': 'Blanco', 'PURPURA': 'Morado', 'NARANJA': 'Naranja'
+                        }
+                        color_code = item.get('value')
+                        human_name = human_map.get(color_code, color_code.title() if isinstance(color_code, str) else str(color_code))
+                        resp = f"Elegido color {human_name}"
+                    elif item.get('type') == 'tool':
+                        val = item.get('value')
+                        if val == 'ERASER':
+                            resp = 'Modo borrador activado'
+                        else:
+                            resp = f'Herramienta {val} activada'
+                    elif item.get('type') == 'brush':
+                        val = item.get('value')
+                        if val == 'LINEA':
+                            resp = 'Pincel línea activado'
+                        elif val == 'DAB':
+                            resp = 'Pincel punteado activado'
+                        else:
+                            resp = f'Pincel {val} activado'
+                    elif item.get('type') == 'size':
+                        val = item.get('value')
+                        # mapear tamaños comunes
+                        size_map = {2: 'fino', 5: 'medio', 10: 'grande'}
+                        human = size_map.get(val, str(val))
+                        resp = f'Grosor {human}'
+                except Exception:
+                    resp = None
+
+                # voz de confirmación (preferir VoiceFeedback si está disponible)
+                try:
+                    if resp and getattr(self, 'voice_feedback', None):
+                        self.voice_feedback.speak(resp)
+                except Exception:
+                    pass
+
+                # mostrar confirmación visual breve también (con sombra)
+                if resp:
+                    self._last_voice_msg = resp
+                    self._last_voice_time = time.time()
+
+                # reset hover
+                self._hover_candidate = None
+                self._hover_start_time = 0.0
+        else:
+            # nuevo candidato
+            self._hover_candidate = item
+            self._hover_start_time = time.time()
     
     def run(self):
         """Ejecuta el bucle principal de la aplicación."""
@@ -441,6 +662,9 @@ class PaintApp:
             self._draw_ui_overlay(ui_img, ui_items, self._last_pointer, getattr(self, '_last_pinch', False))
 
             # Manejar la lógica de selección: pinch start -> candidate, pinch release -> apply
+            # hover (dwell) selection: si mantienes el cursor sobre un color durante N segundos se selecciona
+            self._handle_hover_selection(ui_items)
+            # pinch selection (manual pinch gesture)
             self._handle_pinch_selection(ui_items)
 
             # Mostrar ventanas
@@ -457,6 +681,23 @@ class PaintApp:
         self.cap.release()
         cv2.destroyAllWindows()
         self.gesture_detector.close()
+        # Detener componentes de voz si existen
+        try:
+            if getattr(self, 'voice_listener', None):
+                try:
+                    self.voice_listener.stop()
+                except Exception:
+                    pass
+        except Exception:
+            pass
+        try:
+            if getattr(self, 'voice_feedback', None):
+                try:
+                    self.voice_feedback.stop()
+                except Exception:
+                    pass
+        except Exception:
+            pass
         print("Aplicación cerrada correctamente.")
 
 
