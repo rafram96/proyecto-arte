@@ -22,7 +22,7 @@ class GestureFeedback:
     def __init__(self):
         self.mp_hands = mp.solutions.hands
     
-    def draw(self, frame, landmarks, is_gesture_active):
+    def draw(self, frame, landmarks, is_gesture_active, mode_info=None):
         """
         Dibuja retroalimentación visual en el frame.
         
@@ -49,6 +49,14 @@ class GestureFeedback:
         
         # --- Estado general del gesto ---
         self._draw_gesture_status(frame, is_gesture_active, feedback_text_lines)
+
+        # --- Modo actual (herramienta / color / tamaño) ---
+        if mode_info is not None:
+            try:
+                self._draw_mode_info(frame, mode_info)
+            except Exception:
+                # No queremos que la retroalimentación rompa la app en caso de errores menores
+                pass
     
     def _draw_index_finger(self, frame, landmarks, to_pixel, get_y, feedback_text_lines):
         """Dibuja retroalimentación para el dedo índice."""
@@ -132,3 +140,35 @@ class GestureFeedback:
                 cv2.putText(frame, text_feedback, (10, 60 + line_num * 25), 
                            FEEDBACK_FONT, FEEDBACK_TEXT_SCALE, FEEDBACK_COLOR_NOT_MET, 
                            FEEDBACK_TEXT_THICKNESS, cv2.LINE_AA)
+
+    def _draw_mode_info(self, frame, mode_info):
+        """Dibuja en la esquina superior derecha la información del modo actual.
+
+        mode_info: dict con claves opcionales 'tool', 'color', 'size'
+        """
+        h, w, _ = frame.shape
+        parts = []
+        tool = mode_info.get('tool') if isinstance(mode_info, dict) else None
+        color = mode_info.get('color') if isinstance(mode_info, dict) else None
+        size = mode_info.get('size') if isinstance(mode_info, dict) else None
+        if tool:
+            parts.append(str(tool))
+        if color:
+            parts.append(str(color))
+        if size is not None:
+            parts.append(f"size:{size}")
+
+        text = ' | '.join(parts)
+        if not text:
+            return
+
+        # Medir tamaño y colocar en esquina superior derecha con padding
+        padding = 10
+        (tw, th), _ = cv2.getTextSize(text, FEEDBACK_FONT, FEEDBACK_TEXT_SCALE, FEEDBACK_TEXT_THICKNESS)
+        x = w - tw - padding
+        y = padding + th
+        # Fondo semitransparente
+        overlay = frame.copy()
+        cv2.rectangle(overlay, (x - 6, y - th - 6), (x + tw + 6, y + 6), (220, 220, 220), -1)
+        cv2.addWeighted(overlay, 0.6, frame, 0.4, 0, frame)
+        cv2.putText(frame, text, (x, y), FEEDBACK_FONT, FEEDBACK_TEXT_SCALE, (10, 10, 10), FEEDBACK_TEXT_THICKNESS, cv2.LINE_AA)

@@ -127,8 +127,13 @@ class PaintApp:
 
                     self.canvas.add_point(x, y)
                 
-                # Dibujar retroalimentación
-                self.feedback.draw(frame, landmarks, gesture_detected)
+                # Dibujar retroalimentación (pasamos modo actual para mostrarlo en TRACKING)
+                mode_info = {
+                    'tool': self.brush_manager.get_current_type_name(),
+                    'color': self.canvas.get_current_color_name(),
+                    'size': self.brush_manager.get_current_size()
+                }
+                self.feedback.draw(frame, landmarks, gesture_detected, mode_info)
         
         if not gesture_detected and self._prev_gesture:
             # Romper el trazo actual cuando el gesto terminó
