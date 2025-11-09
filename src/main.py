@@ -14,6 +14,7 @@ from core.brushes import BrushManager
 from core.canvas import Canvas
 from core.feedback import GestureFeedback
 import argparse
+import queue
 import subprocess
 import shutil
 import time
@@ -186,6 +187,8 @@ class PaintApp:
         # Mensajes de voz/visual (último mensaje hablado/mostrado)
         self._last_voice_msg = None
         self._last_voice_time = 0.0
+        # Flag para evitar imprimir repetidamente que el listener no está disponible
+        self._voice_unavailable_printed = False
 
         # Inicializar componentes de voz de forma opcional (no rompe si faltan deps)
         try:
@@ -193,16 +196,41 @@ class PaintApp:
             from utils.voice_listener import VoiceListener
             self.voice_feedback = VoiceFeedback()
             # VoiceListener acepta callback(text) y tiene start()/stop()
-            self.voice_listener = VoiceListener(callback=self._on_voice_command)
+            # Usamos una cola para procesar comandos en el hilo principal (seguro para UI)
+            self._voice_queue = queue.Queue()
+            self.voice_listener = VoiceListener(callback=self._enqueue_voice_command)
             # arrancar en modo pasivo
             try:
                 self.voice_listener.start()
             except Exception:
                 # si start falla, no bloqueamos la app
                 pass
+            # Anunciar una sola vez al iniciar si hay TTS disponible
+            try:
+                if getattr(self, 'voice_feedback', None):
+                    try:
+                        self.voice_feedback.speak('LUMI ACTIVADO')
+                    except Exception:
+                        pass
+                    # mostrar también visualmente por unos segundos
+                    try:
+                        self._last_voice_msg = 'LUMI ACTIVADO'
+                        self._last_voice_time = time.time()
+                    except Exception:
+                        pass
+            except Exception:
+                pass
         except Exception:
             self.voice_feedback = None
             self.voice_listener = None
+            self._voice_queue = None
+            # informar una sola vez al iniciar que la funcionalidad de voz no está disponible
+            try:
+                if not self._voice_unavailable_printed:
+                    print("Voice listener no disponible en este entorno.")
+                    self._voice_unavailable_printed = True
+            except Exception:
+                pass
     
     def print_instructions(self):
         """Imprime las instrucciones de uso."""
@@ -220,6 +248,8 @@ class PaintApp:
         print("Los dedos corazón y anular deben estar flexionados hacia la palma. (El meñique se ignora)")
         print("Observa el feedback visual en la ventana 'Tracking' para ajustar tu mano.")
         print("=" * 80)
+    print("\n--- Control de Voz ---")
+    print(" 'v': Activar/Desactivar escucha de voz (Lumi)")
     
     def process_keyboard_input(self):
         """Procesa la entrada del teclado."""
@@ -248,6 +278,26 @@ class PaintApp:
         elif key == ord("s"):
             brush_size = self.brush_manager.next_size()
             print(f"Tamaño de pincel: {brush_size}")
+        elif key == ord("v"):
+            # Toggle voice listener
+            if getattr(self, 'voice_listener', None):
+                try:
+                    if self.voice_listener.is_running():
+                        self.voice_listener.stop()
+                        print("Voice listener detenido.")
+                    else:
+                        self.voice_listener.start()
+                        print("Voice listener arrancado.")
+                except Exception as e:
+                    print(f"Error controlando voice listener: {e}")
+            else:
+                # imprimir solo la primera vez para evitar spam en consola
+                try:
+                    if not getattr(self, '_voice_unavailable_printed', False):
+                        print("Voice listener no disponible en este entorno.")
+                        self._voice_unavailable_printed = True
+                except Exception:
+                    pass
     
     def process_frame(self, frame):
         """
@@ -355,34 +405,38 @@ class PaintApp:
             if it['type'] == 'color':
                 color_bgr = self.canvas.colors.get(it['value'], (200, 200, 200))
                 cv2.rectangle(img, (x, y), (x + w, y + h), color_bgr, -1)
+
+                # Calcular brillo para decidir color de texto (blanco o negro)
+                brightness = 0.299 * color_bgr[2] + 0.587 * color_bgr[1] + 0.114 * color_bgr[0]
+                text_color = (0, 0, 0) if brightness > 128 else (255, 255, 255)
+
+                # Mostrar índice del color (si existe)
+                if 'index' in it:
+                    cv2.putText(img, str(it['index'] + 1),
+                                (x + w // 3, y + int(h * 0.7)),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.6, text_color, 2, cv2.LINE_AA)
             else:
-                # fondo gris para otros items
+                # Fondo gris para otros elementos (pinceles, tamaños, etc.)
                 cv2.rectangle(img, (x, y), (x + w, y + h), (240, 240, 240), -1)
 
-            # borde
+            # Borde general
             cv2.rectangle(img, (x, y), (x + w, y + h), (50, 50, 50), 1)
 
-            # etiqueta: usar etiquetas explícitas para evitar confusiones
+            # Etiquetas para pinceles, tamaños o herramientas
             label = ''
             if it['type'] == 'tool' and it['value'] == 'ERASER':
                 label = 'E'
             elif it['type'] == 'brush':
-                # mapear nombres de pincel a letra clara
-                brush_label_map = {
-                    'LINEA': 'L',
-                    'DAB': 'D',
-                    'ERASER': 'E'
-                }
+                brush_label_map = {'LINEA': 'L', 'DAB': 'D', 'ERASER': 'E'}
                 label = brush_label_map.get(it['value'], it['value'][0])
             elif it['type'] == 'size':
                 label = str(it['value'])
-            elif it['type'] == 'color':
-                label = ''
 
             if label:
-                cv2.putText(img, label, (x + 6, y + h - 8), 0, 0.5, (0, 0, 0), 1, cv2.LINE_AA)
+                cv2.putText(img, label, (x + 6, y + h - 8),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1, cv2.LINE_AA)
 
-        # Si hay pointer, dibujar indicador y resaltar hover
+        # --- Dibujo del cursor y hover ---
         if pointer_norm is not None:
             px = int(max(0, min(1, pointer_norm[0])) * self.canvas.width)
             py = int(max(0, min(1, pointer_norm[1])) * self.canvas.height)
@@ -391,12 +445,12 @@ class PaintApp:
                 x, y, w, h = hover['rect']
                 cv2.rectangle(img, (x, y), (x + w, y + h), (0, 200, 255), 2)
 
-            # pointer circle
             cv2.circle(img, (px, py), 6, (0, 0, 255) if pinch else (0, 255, 0), -1)
-            # si hay candidato de hover, mostrar progreso dentro del rect
+
+            # Mostrar progreso del hover (dwell)
             try:
-                # Mostrar progreso de hover para cualquier tipo de item (color/tool/brush/size)
-                if self._hover_candidate is not None and hover is not None and self._hover_candidate.get('type') == hover.get('type'):
+                if (self._hover_candidate is not None and hover is not None and
+                        self._hover_candidate.get('type') == hover.get('type')):
                     same = False
                     if hover.get('type') == 'color':
                         same = (self._hover_candidate.get('index') == hover.get('index'))
@@ -405,13 +459,13 @@ class PaintApp:
                     if same:
                         elapsed = time.time() - getattr(self, '_hover_start_time', 0)
                         remain = max(0.0, self.HOVER_SELECT_SECONDS - elapsed)
-                        # dibujar texto de cuenta regresiva en esquina superior del rect
                         txt = f"{remain:.1f}s"
-                        cv2.putText(img, txt, (hover['rect'][0] + 6, hover['rect'][1] + 18), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2, cv2.LINE_AA)
+                        cv2.putText(img, txt, (hover['rect'][0] + 6, hover['rect'][1] + 18),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2, cv2.LINE_AA)
             except Exception:
                 pass
 
-        # Mostrar estado de TTS en la esquina superior derecha (texto con sombra)
+        # --- Estado de TTS ---
         try:
             tts_text = 'TTS: none'
             tts_ok = False
@@ -423,15 +477,57 @@ class PaintApp:
                 tts_text = f'TTS: {st}'
                 tts_ok = self.voice_feedback.available if hasattr(self.voice_feedback, 'available') else (st != 'none')
 
-            # sombra
             h, w = img.shape[:2]
             tx = w - 220
             ty = UI_TOP_PADDING + 16
-            cv2.putText(img, tts_text, (tx + 1, ty + 1), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (10, 10, 10), 3, cv2.LINE_AA)
+            cv2.putText(img, tts_text, (tx + 1, ty + 1),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (10, 10, 10), 3, cv2.LINE_AA)
             color = (50, 200, 50) if tts_ok else (200, 50, 50)
-            cv2.putText(img, tts_text, (tx, ty), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA)
+            cv2.putText(img, tts_text, (tx, ty),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA)
         except Exception:
             pass
+
+        # --- Estado del Listener ---
+        try:
+            lis_text = 'Lumi: off'
+            lis_color = (200, 50, 50)
+            if getattr(self, 'voice_listener', None):
+                try:
+                    running = self.voice_listener.is_running()
+                    mic_ok = getattr(self.voice_listener, 'mic_available', False)
+                except Exception:
+                    running = False
+                    mic_ok = False
+                if running and mic_ok:
+                    lis_text = '🎙 Lumi: on'
+                    lis_color = (50, 200, 50)
+                elif running and not mic_ok:
+                    lis_text = '🎙 Lumi: on (no mic)'
+                    lis_color = (0, 180, 200)
+            lx = UI_BOX_SPACING
+            ly = UI_TOP_PADDING + 16
+            cv2.putText(img, lis_text, (lx + 1, ly + 1),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (10, 10, 10), 3, cv2.LINE_AA)
+            cv2.putText(img, lis_text, (lx, ly),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, lis_color, 1, cv2.LINE_AA)
+        except Exception:
+            pass
+
+        # --- Último mensaje de voz ---
+        try:
+            if getattr(self, '_last_voice_msg', None) and (time.time() - getattr(self, '_last_voice_time', 0) < 3.0):
+                msg = self._last_voice_msg
+                h, w = img.shape[:2]
+                mx = int(w * 0.5) - 200
+                my = UI_TOP_PADDING + 40
+                cv2.putText(img, msg, (mx + 2, my + 2),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 4, cv2.LINE_AA)
+                cv2.putText(img, msg, (mx, my),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2, cv2.LINE_AA)
+        except Exception:
+            pass
+
 
     def _apply_selection(self, item):
         if item is None:
@@ -458,75 +554,139 @@ class PaintApp:
                 print(f"Tamaño seleccionado (UI): {val}")
 
     def _on_voice_command(self, text):
-        """Manejador de comandos de voz simples en español.
-        Soporta: colores, modos (borrador/linea/dab), tamaños (fino/medio/grande), limpiar, salir.
-        """
+        """Maneja comandos de voz tipo: 'Lumi color rojo', 'Lumi modo línea', 'Lumi grosor mediano'."""
+        import sys
+        if sys.platform == "win32":
+            import winsound
         if not text:
             return
-        t = text.lower()
+        t = text.lower().strip()
+
+        # Inicializar variables si no existen (lazy init)
+        if not hasattr(self, "_lumi_active_until"):
+            self._lumi_active_until = 0.0
+        if not hasattr(self, "LUMI_ACTIVE_DURATION"):
+            self.LUMI_ACTIVE_DURATION = 8.0
+
+        # Wake word → activar modo comandos
+        if "lumi" in t:
+            print("[VoiceListener] Wake word detectada → modo activo")
+            self._lumi_active_until = time.time() + self.LUMI_ACTIVE_DURATION
+
+            # 🔊 Beep corto (solo Windows)
+            if sys.platform == "win32":
+                winsound.Beep(1000, 150)
+
+        # Si Lumi no está activo, ignorar
+        if time.time() > self._lumi_active_until:
+            print("[VoiceListener] ignorando comando (Lumi inactivo)")
+            return
+
         resp = None
 
-        # Intentar detectar color por nombre
-        try:
-            color_map = {name.lower(): name for name in COLOR_NAMES}
-            # aliases comunes en español
-            color_map.update({'morado': 'PURPURA', 'negro': 'NEGRO', 'blanco': 'BLANCO', 'naranja': 'NARANJA', 'azul': 'AZUL', 'verde':'VERDE', 'rojo':'ROJO', 'amarillo':'AMARILLO'})
-            for k, v in color_map.items():
-                if k in t:
-                    idx = COLOR_NAMES.index(v)
+        # 🎨 COLOR
+        if "color" in t:
+            color_map = {
+                "rojo": "ROJO", "verde": "VERDE", "azul": "AZUL",
+                "amarillo": "AMARILLO", "morado": "PURPURA",
+                "blanco": "BLANCO", "negro": "NEGRO", "naranja": "NARANJA"
+            }
+            for palabra, color in color_map.items():
+                if palabra in t:
+                    idx = COLOR_NAMES.index(color)
                     self.canvas.set_color(idx)
-                    resp = f"Elegido color {v.title()}"
+                    resp = f"Color {palabra} seleccionado"
+                    print(f"[VoiceCommand] {resp}")
                     break
-        except Exception:
-            pass
 
-        # Herramientas / pinceles
-        if resp is None:
-            if 'borrador' in t or ('eraser' in t and 'todo' not in t):
-                if 'ERASER' in self.brush_manager.brush_types:
-                    self.brush_manager.current_type_index = self.brush_manager.brush_types.index('ERASER')
-                resp = 'Modo borrador activado'
-            elif 'línea' in t or 'linea' in t:
-                if 'LINEA' in self.brush_manager.brush_types:
-                    self.brush_manager.current_type_index = self.brush_manager.brush_types.index('LINEA')
-                resp = 'Pincel línea activado'
-            elif 'punte' in t or 'dab' in t:
-                if 'DAB' in self.brush_manager.brush_types:
-                    self.brush_manager.current_type_index = self.brush_manager.brush_types.index('DAB')
-                resp = 'Pincel punteado activado'
+        # ✍️ MODO
+        if resp is None and "modo" in t:
+            if any(k in t for k in ["borrador", "eraser"]):
+                if "ERASER" in self.brush_manager.brush_types:
+                    self.brush_manager.current_type_index = self.brush_manager.brush_types.index("ERASER")
+                resp = "Modo borrador activado"
+            elif any(k in t for k in ["línea", "linea"]):
+                if "LINEA" in self.brush_manager.brush_types:
+                    self.brush_manager.current_type_index = self.brush_manager.brush_types.index("LINEA")
+                resp = "Modo línea activado"
+            elif any(k in t for k in ["spray", "punteado", "dab"]):
+                if "DAB" in self.brush_manager.brush_types:
+                    self.brush_manager.current_type_index = self.brush_manager.brush_types.index("DAB")
+                resp = "Modo spray activado"
 
-        # Tamaños
-        if resp is None:
-            size_val = None
-            if 'fino' in t:
-                size_val = 2
-            elif 'medio' in t:
-                size_val = 5
-            elif 'grande' in t:
-                size_val = 10
-            if size_val and size_val in self.brush_manager.brush_sizes:
-                self.brush_manager.current_size_index = self.brush_manager.brush_sizes.index(size_val)
-                resp = f'Grosor {"fino" if size_val==2 else ("medio" if size_val==5 else "grande")}'
+            if resp:
+                print(f"[VoiceCommand] {resp}")
 
-        # Comandos globales
-        if 'limpiar' in t or 'borrar todo' in t or 'borrar lienzo' in t:
+        # ⚙️ GROSOR
+        if resp is None and "grosor" in t:
+            if any(k in t for k in ["peque", "fino"]):
+                self.brush_manager.current_size_index = 0
+                resp = "Grosor pequeño"
+            elif "medio" in t:
+                self.brush_manager.current_size_index = 1
+                resp = "Grosor mediano"
+            elif "grande" in t:
+                self.brush_manager.current_size_index = 2
+                resp = "Grosor grande"
+            if resp:
+                print(f"[VoiceCommand] {resp}")
+
+        # 🧽 Comandos globales
+        if "limpiar" in t or "borrar todo" in t or "borrar lienzo" in t:
             self.canvas.clear()
-            resp = 'Lienzo borrado'
-        if 'salir' in t or 'cerrar' in t or 'adiós' in t or 'adios' in t:
+            resp = "Lienzo borrado"
+            print(f"[VoiceCommand] {resp}")
+        elif any(k in t for k in ["salir", "cerrar", "adios", "adiós"]):
             self.running = False
-            resp = 'Saliendo'
+            resp = "Saliendo"
+            print(f"[VoiceCommand] {resp}")
 
-        # Respuesta por voz (si está disponible)
-        if resp and getattr(self, 'voice_feedback', None):
-            try:
-                self.voice_feedback.speak(resp)
-            except Exception:
-                pass
-
-        # Mostrar confirmación visual breve también
+        # 🔊 Feedback (voz + texto)
         if resp:
             self._last_voice_msg = resp
             self._last_voice_time = time.time()
+            if getattr(self, "voice_feedback", None):
+                try:
+                    self.voice_feedback.speak(resp)
+                except Exception:
+                    pass
+
+    def _enqueue_voice_command(self, text):
+        try:
+            if getattr(self, '_voice_queue', None) is not None:
+                log = f"[Reconocido] {text.strip()}"
+                try:
+                    # Si VoiceListener adjunta RMS u otra info, se muestra
+                    if hasattr(self.voice_listener, 'last_rms'):
+                        log += f" (rms={self.voice_listener.last_rms:.3f})"
+                    print(log)
+                except Exception:
+                    print(f"[Reconocido] {text}")
+                self._voice_queue.put_nowait(text)
+        except Exception:
+            pass
+
+    def _process_pending_voice_commands(self):
+        """Procesa todos los comandos de voz pendientes (llamado desde el hilo principal)."""
+        if getattr(self, '_voice_queue', None) is None:
+            return
+        try:
+            while not self._voice_queue.empty():
+                try:
+                    txt = self._voice_queue.get_nowait()
+                except Exception:
+                    break
+                try:
+                    try:
+                        print(f"[PaintApp] Processing voice cmd: '{txt}'")
+                    except Exception:
+                        pass
+                    # procesar texto como si viniera directamente (aplica selección y TTS)
+                    self._on_voice_command(txt)
+                except Exception:
+                    pass
+        except Exception:
+            pass
 
     def _handle_pinch_selection(self, ui_items):
         current_pinch = getattr(self, '_last_pinch', False)
@@ -651,6 +811,12 @@ class PaintApp:
             
             # Procesar frame
             processed_frame, _ = self.process_frame(frame)
+
+            # Procesar comandos de voz pendientes (si los hay)
+            try:
+                self._process_pending_voice_commands()
+            except Exception:
+                pass
             
             # Renderizar canvas
             # Pasamos el manager para que Canvas use el pincel correcto por trazo
