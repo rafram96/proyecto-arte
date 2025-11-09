@@ -7,12 +7,15 @@ import numpy as np
 from collections import deque
 from .config import MAX_POINTS_PER_STROKE, SMOOTHING_ALPHA, ERASER_DISTANCE_THRESHOLD
 import math
+import json
+import time
+import os
 
 
 class Canvas:
     """Gestiona el lienzo de pintura y los trazos."""
     
-    def __init__(self, width, height, colors):
+    def __init__(self, width, height, colors, auto_save_file="canvas_state.json"):
         self.width = width
         self.height = height
         self.colors = colors
@@ -25,12 +28,17 @@ class Canvas:
         # Cada trazo: {'points': deque, 'color': str, 'brush_type': str, 'brush_size': int}
         self.strokes = []
         self.current_stroke = None
+        
+        # Auto-guardado en tiempo real
+        self.auto_save_file = auto_save_file
+        self._save_to_file()
     
     def clear(self):
         """Borra todo el lienzo y reinicia los trazos."""
         self.image = np.zeros((self.height, self.width, 3), dtype=np.uint8) + 255
         self.strokes = []
         self.current_stroke = None
+        self._save_to_file()  # Guardar estado vacío
     
     def add_point(self, normalized_x, normalized_y):
         """
@@ -60,6 +68,9 @@ class Canvas:
             pts.appendleft(smoothed)
         else:
             pts.appendleft(point)
+        
+        # Guardar en tiempo real después de añadir punto
+        self._save_to_file()
     
     def break_current_stroke(self):
         """Termina el trazo actual."""
@@ -79,6 +90,7 @@ class Canvas:
     def end_stroke(self):
         """Finaliza el trazo actual (si existe)."""
         self.current_stroke = None
+        self._save_to_file()  # Guardar al finalizar trazo
     
     def render(self, brush_manager):
         """
@@ -181,3 +193,36 @@ class Canvas:
                 if dx * dx + dy * dy <= thr2:
                     return True
         return False
+    
+    def _save_to_file(self):
+        """Guarda el estado actual del canvas en tiempo real al archivo JSON."""
+        strokes_data = []
+        
+        for stroke in self.strokes:
+            # Convertir cada punto del trazo
+            points = list(stroke['points'])
+            for point in points:
+                strokes_data.append({
+                    'x': int(point[0]),
+                    'y': int(point[1]),
+                    'color': stroke['color'],
+                    'brush_type': stroke['brush_type'],
+                    'brush_size': stroke['brush_size'],
+                    'time': time.time()
+                })
+        
+        # Guardar en archivo
+        data = {'strokes': strokes_data}
+        try:
+            with open(self.auto_save_file, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=2)
+        except Exception as e:
+            print(f"Error guardando estado: {e}")
+    
+    def delete_save_file(self):
+        """Elimina el archivo de guardado automático al cerrar el programa."""
+        try:
+            if os.path.exists(self.auto_save_file):
+                os.remove(self.auto_save_file)
+        except Exception as e:
+            print(f"Error eliminando archivo de guardado: {e}")

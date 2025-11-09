@@ -629,6 +629,9 @@ class PaintApp:
     
     def cleanup(self):
         """Limpia recursos antes de cerrar."""
+        # Eliminar archivo de guardado automático
+        self.canvas.delete_save_file()
+        
         self.cap.release()
         cv2.destroyAllWindows()
         self.gesture_detector.close()
