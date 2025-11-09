@@ -49,7 +49,7 @@ COLOR_NAMES = ["AZUL", "VERDE", "ROJO", "AMARILLO", "NEGRO", "BLANCO", "PURPURA"
 BRUSH_TYPES = ["LINEA", "DAB", "ERASER"]
 
 # Tamaños de pincel disponibles
-BRUSH_SIZES = [2, 5, 10]  # Pequeño, Mediano, Grande
+BRUSH_SIZES = [2, 5, 10, 20, 50]  # Pequeño, Mediano, Grande, Gigante (20), Jumbo (50)
 
 # Configuración de retroalimentación visual
 FEEDBACK_COLOR_MET = (0, 255, 0)  # Verde si la condición se cumple
