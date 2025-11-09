@@ -19,7 +19,7 @@ import subprocess
 import shutil
 import time
 
-#abc
+#abcd
 def _list_directshow_devices_ffmpeg():
     """Intentar listar dispositivos DirectShow usando ffmpeg."""
     ffmpeg = shutil.which("ffmpeg")
