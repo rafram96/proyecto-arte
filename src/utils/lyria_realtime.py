@@ -119,6 +119,11 @@ class LyriaRealtimeAudio:
         self.last_prompt_update = 0  # Control de frecuencia de updates
         self.dynamic_usage: Dict[str, float] = {}
         self.last_config_update = 0.0
+        self.canvas_active = False
+        self.playback_active = False
+        self.target_output_gain = 0.0
+        self.output_gain = 0.0
+        self.gain_smoothing = 0.12
         
         # Modo simulación
         self.simulation_mode = not GENAI_AVAILABLE or self.client is None
@@ -193,22 +198,38 @@ class LyriaRealtimeAudio:
         """Monitorea continuamente el archivo JSON en busca de cambios."""
         while self.running:
             try:
+                strokes = []
                 if os.path.exists(self.canvas_state_file):
                     with open(self.canvas_state_file, 'r', encoding='utf-8') as f:
                         data = json.load(f)
-                    
-                    strokes = data.get('strokes', [])
-                    current_count = len(strokes)
-                    
-                    # Procesar solo los nuevos trazos
-                    if current_count > self.last_processed_count:
-                        new_strokes = strokes[self.last_processed_count:]
-                        self._process_new_strokes(new_strokes)
-                        self.last_processed_count = current_count
+                    strokes = data.get('strokes', []) or []
+
+                current_count = len(strokes)
+
+                if current_count == 0:
+                    if self.last_processed_count != 0 or self.canvas_active:
+                        self._handle_canvas_cleared()
+                    self.last_processed_count = 0
+                    time.sleep(0.1)
+                    continue
+
+                if current_count < self.last_processed_count:
+                    self._handle_canvas_cleared()
+                    self.last_processed_count = 0
+
+                if current_count > self.last_processed_count:
+                    new_strokes = strokes[self.last_processed_count:]
+                    self._process_new_strokes(new_strokes)
+                    self.last_processed_count = current_count
                 
-            except (json.JSONDecodeError, FileNotFoundError) as e:
-                # Archivo en proceso de escritura o no existe aún
-                pass
+            except json.JSONDecodeError:
+                # Archivo en proceso de escritura - esperar al siguiente ciclo
+                time.sleep(0.05)
+                continue
+            except FileNotFoundError:
+                # Aún no existe el archivo
+                self._handle_canvas_cleared()
+                self.last_processed_count = 0
             except Exception as e:
                 print(f"❌ Error monitoreando canvas: {e}")
             
@@ -237,6 +258,27 @@ class LyriaRealtimeAudio:
             
             # Añadir a la cola de reproducción
             self.music_queue.append(music_event)
+
+        if strokes and not self.canvas_active:
+            self.canvas_active = True
+            self.target_output_gain = 1.0
+
+    def _handle_canvas_cleared(self):
+        """Reacciona cuando el lienzo queda vacío o no existe."""
+        if not self.canvas_active and not self.current_instruments and self.target_output_gain == 0.0:
+            return
+
+        self.canvas_active = False
+        self.target_output_gain = 0.0
+        self.playback_active = False
+        self.current_instruments.clear()
+        self.dynamic_usage.clear()
+        self.music_queue.clear()
+        self.last_prompt_update = 0
+        self.last_config_update = 0.0
+
+        if self.event_loop and self.event_loop.is_running():
+            asyncio.run_coroutine_threadsafe(self._pause_session(), self.event_loop)
     
     def _stroke_to_music_event(self, color: str, brush_type: str, 
                                 brush_size: int, x: int, y: int, 
@@ -310,6 +352,9 @@ class LyriaRealtimeAudio:
                 asyncio.TaskGroup() as tg,
             ):
                 self.session = session
+                self.playback_active = False
+                self.target_output_gain = 0.0
+                self.output_gain = 0.0
                 print("✅ Sesión Lyria RealTime conectada")
                 
                 # Crear tarea para recibir y reproducir audio
@@ -338,9 +383,7 @@ class LyriaRealtimeAudio:
                 print(f"   - Temperature: {self.current_temperature}")
                 print(f"   - Scale: {self.global_scale}")
                 
-                # Iniciar reproducción
-                await session.play()
-                print("🎵 Reproducción iniciada - esperando trazos del canvas...")
+                print("⏸️  Esperando primeros trazos para iniciar reproducción...")
                 
                 # Loop principal de procesamiento - MÁS RÁPIDO
                 while self.running:
@@ -509,6 +552,10 @@ class LyriaRealtimeAudio:
             brush_type = event.get('brush_type', 'LINEA')
             now = time.time()
 
+            await self._ensure_session_playing(session)
+            self.target_output_gain = max(self.target_output_gain, 1.0)
+            self.canvas_active = True
+
             # Agregar instrumento al set de activos
             self.current_instruments.add(instrument)
 
@@ -548,6 +595,43 @@ class LyriaRealtimeAudio:
         except Exception as e:
             print(f"❌ Error: {e}")
     
+    async def _ensure_session_playing(self, session):
+        """Garantiza que la sesión esté reproduciendo música."""
+        if self.playback_active:
+            return
+        if not hasattr(session, 'play'):
+            return
+        try:
+            await session.play()
+            self.playback_active = True
+            if not self.canvas_active:
+                self.canvas_active = True
+            self.target_output_gain = max(self.target_output_gain, 1.0)
+        except Exception as e:
+            print(f"⚠️  No se pudo iniciar la reproducción: {e}")
+
+    async def _pause_session(self):
+        """Pausa la sesión si es posible."""
+        if not self.session:
+            return
+
+        pause_coro = None
+        if hasattr(self.session, 'pause'):
+            pause_coro = getattr(self.session, 'pause')
+        elif hasattr(self.session, 'stop'):
+            pause_coro = getattr(self.session, 'stop')
+
+        if pause_coro is None:
+            self.playback_active = False
+            return
+
+        try:
+            await pause_coro()
+        except Exception as e:
+            print(f"⚠️  No se pudo pausar la sesión: {e}")
+        finally:
+            self.playback_active = False
+
     async def _apply_dynamic_config(self, session, dynamic_info: Dict, current_time: float):
         """Suaviza cambios de tempo/temperatura según la dinámica seleccionada."""
         if not GENAI_AVAILABLE:
@@ -648,10 +732,19 @@ class LyriaRealtimeAudio:
                 audio_normalized[:fade_samples] *= fade_curve
                 audio_normalized[-fade_samples:] *= fade_curve[::-1]
 
-            # 6. Convertir de vuelta a int16
+            # 6. Aplicar ganancia de salida progresiva
+            self.output_gain = self._smooth_value(self.output_gain, self.target_output_gain, self.gain_smoothing)
+            applied_gain = self.output_gain
+            if applied_gain <= 1e-4 and self.target_output_gain == 0.0:
+                applied_gain = 0.0
+                self.output_gain = 0.0
+
+            audio_normalized *= applied_gain
+
+            # 7. Convertir de vuelta a int16
             audio_processed = np.ascontiguousarray((audio_normalized * max_val).astype(np.int16))
 
-            # 7. Escribir al stream con thread pool (non-blocking)
+            # 8. Escribir al stream con thread pool (non-blocking)
             await asyncio.get_event_loop().run_in_executor(
                 None,
                 self._write_audio_to_stream,
