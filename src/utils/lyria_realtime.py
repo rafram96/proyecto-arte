@@ -36,13 +36,13 @@ class LyriaRealtimeAudio:
     
     # Mapeo simple de colores a instrumentos
     COLOR_TO_INSTRUMENT = {
-        "AZUL": "andean music",
+        "AZUL": "peruvian harp",
         "VERDE": "cholo berrocal", 
         "ROJO": "viola",
         "AMARILLO": "quena",
         "NEGRO": "piano",
         "BLANCO": "harp",
-        "PURPURA": "apurimac",
+        "PURPURA": "drums",
         "NARANJA": "trumpet"
     }
     
@@ -287,7 +287,7 @@ class LyriaRealtimeAudio:
                 # Configurar prompts iniciales - Base de música andina
                 await session.set_weighted_prompts(
                     prompts=[
-                        types.WeightedPrompt(text="andean music", weight=1.5),
+                        types.WeightedPrompt(text="orchestra music", weight=1.5),
                     ]
                 )
                 
