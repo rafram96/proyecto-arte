@@ -1,441 +1,316 @@
-# Pintura Interactiva con Gestos - Transgresión Digital# Pintura Interactiva con Gestos - Transgresión Digital
+# Damichi Interactive Painting and Generative Music: Pintura Interactiva con Gestos - Transgresión Digital
 
 
 
-Aplicación de pintura artística controlada por gestos de mano, diseñada para explorar el concepto de transgresión en el arte digital.Aplicación de pintura artística controlada por gestos de mano, diseñada para explorar el concepto de transgresión en el arte digital.
+LUMI is an experimental application that combines gesture driven painting, optional voice commands, and real time generative music. The project explores digital transgression: physical movement becomes a virtual mark, and the disruption lives in the idea rather than the material.
 
 
+
+## Quick startAplicación de pintura artística controlada por gestos de mano, diseñada para explorar el concepto de transgresión en el arte digital.Aplicación de pintura artística controlada por gestos de mano, diseñada para explorar el concepto de transgresión en el arte digital.
+
+
+
+1. Create and activate a Python 3.10+ environment.
+
+2. Install dependencies:
 
 ## 🚀 Inicio Rápido## 📁 Estructura del Proyecto
 
-
-
-### Windows```
-
-```bashproyecto/
-
-start.bat│
-
-```├── main.py              # 🎨 Aplicación principal
-
-├── config.py            # ⚙️ Configuración global
-
-### Manual├── gesture_detector.py  # 🤚 Detección de gestos con MediaPipe
-
-```bash├── brushes.py           # 🖌️ Sistema de pinceles
-
-# Ejecutar aplicación├── canvas.py            # 🖼️ Lienzo digital
-
-python src/main.py├── feedback.py          # 👁️ Retroalimentación visual
-
-├── utils.py             # 🔧 Utilidades y herramientas
-
-# Verificar sistema├── extensions.py        # ➕ Extensiones y ejemplos
-
-python scripts/demo.py├── test_components.py   # 🧪 Tests unitarios
-
-│
-
-# Ejecutar tests├── README.md            # 📖 Este archivo
-
-python -m pytest tests/ -v├── ARCHITECTURE.md      # 🏗️ Documentación de arquitectura
-
-```├── CONTRIBUTING.md      # 🤝 Guía de contribución
-
-├── requirements.txt     # 📦 Dependencias
-
-## 📦 Instalación│
-
-└── french.py            # 📜 Versión original (legacy)
-
-```bash```
+```
 
 pip install -r requirements.txt
 
+```
+
+### Windows```
+
+If PyAudio fails on Windows run `pip install pipwin` followed by `pipwin install pyaudio`, or download the appropriate wheel from the Gohlke archive.
+
+```bashproyecto/
+
+Run the application:
+
+start.bat│
+
+```
+
+python src/main.py```├── main.py              # 🎨 Aplicación principal
+
+```
+
+├── config.py            # ⚙️ Configuración global
+
+On launch the console prints usage instructions and, when text to speech is available, plays the phrase "LUMI ACTIVADO" exactly once.
+
+### Manual├── gesture_detector.py  # 🤚 Detección de gestos con MediaPipe
+
+## Controls
+
+```bash├── brushes.py           # 🖌️ Sistema de pinceles
+
+Keyboard shortcuts:
+
+# Ejecutar aplicación├── canvas.py            # 🖼️ Lienzo digital
+
+| Key | Action |
+
+| --- | --- |python src/main.py├── feedback.py          # 👁️ Retroalimentación visual
+
+| q | Quit |
+
+| c | Clear canvas |├── utils.py             # 🔧 Utilidades y herramientas
+
+| 1-8 | Switch preset colors |
+
+| t | Cycle brush mode (line, dab, eraser) |# Verificar sistema├── extensions.py        # ➕ Extensiones y ejemplos
+
+| s | Cycle brush size |
+
+| v | Toggle voice listener (when dependencies are available) |python scripts/demo.py├── test_components.py   # 🧪 Tests unitarios
+
+
+
+Gesture overview:│
+
+
+
+1. Drawing gesture: index finger extended, middle finger flexed; other fingers are ignored.# Ejecutar tests├── README.md            # 📖 Este archivo
+
+2. Pinch gesture (index and middle fingertips together) selects UI elements.
+
+3. Hovering the pointer over a UI item for 1.2 seconds confirms the selection.python -m pytest tests/ -v├── ARCHITECTURE.md      # 🏗️ Documentación de arquitectura
+
+
+
+The Tracking window shows skeletal feedback, while the painting window overlay displays the current tool, color, size, hover timer, voice diagnostics, and the latest confirmation message.```├── CONTRIBUTING.md      # 🤝 Guía de contribución
+
+
+
+## Painting pipeline├── requirements.txt     # 📦 Dependencias
+
+
+
+1. `PaintApp` captures webcam frames and forwards them to `GestureDetector`.## 📦 Instalación│
+
+2. `GestureDetector` (MediaPipe Hands) extracts landmarks, evaluates drawing and pinch gestures, and returns a smoothed index tip position.
+
+3. `Canvas` manages stroke objects; `BrushManager` defines how each brush type converts points into marks.└── french.py            # 📜 Versión original (legacy)
+
+4. Active strokes accumulate normalized points; `Canvas.render` redraws all strokes every frame.
+
+5. `GestureFeedback` renders the tracking overlay.```bash```
+
+6. The UI layer handles hover and pinch selection and paints the HUD.
+
+pip install -r requirements.txt
+
+Each frame the canvas serializer updates `canvas_state.json`, which external services (such as the music client) can consume. The file is cleared during shutdown.
+
 ```## ✨ Características
 
+## Voice control (optional)
 
+
+
+Voice input runs when `sounddevice`, `SpeechRecognition`, and a working microphone are present.
 
 ## 📁 Estructura del Proyecto- **Detección de gestos inteligente**: Usa MediaPipe Hands para detección precisa
 
-- **Múltiples pinceles artísticos**: Línea continua y efecto impresionista (dab)
+1. The passive listener records short clips until the wake word "lumi" is detected.
 
-```- **Paleta de colores**: Azul, Verde, Rojo, Amarillo (fácilmente extensible)
+2. The active window records a longer clip (default three seconds) to capture the command.- **Múltiples pinceles artísticos**: Línea continua y efecto impresionista (dab)
+
+3. Recognized text is enqueued and processed on the main thread to keep UI operations thread safe.
+
+4. Supported commands cover colors (for example "color azul"), brush modes ("borrador", "modo linea", "modo punteado"), sizes ("grosor fino", "grosor mediano", "grosor grande"), and global actions ("limpiar", "salir").```- **Paleta de colores**: Azul, Verde, Rojo, Amarillo (fácilmente extensible)
+
+5. `VoiceFeedback` plays spoken confirmations using `pyttsx3` when available, otherwise it falls back to the Windows PowerShell `System.Speech` API. The same message appears on screen for three seconds.
 
 proyecto/- **Retroalimentación visual en tiempo real**: Feedback instantáneo del estado del gesto
 
+Console logs expose listener state changes, RMS levels, passive and active recognition results, and queue processing.
+
 ├── src/                    # Código fuente- **Arquitectura modular y extensible**: Código organizado por responsabilidades
+
+## Generative music
 
 │   ├── core/              # Componentes principales- **Sistema de tests**: Tests unitarios para componentes críticos
 
+`utils/lyria_realtime.py` streams music from Google Lyria (`lyria-realtime-exp`). Provide a valid API key through the `GOOGLE_AI_API_KEY` or `LYRIA_API_KEY` environment variable.
+
 │   │   ├── config.py      # Configuración- **Utilidades artísticas**: Filtros, exportación, análisis de trazos
+
+Workflow:
 
 │   │   ├── gesture_detector.py- **Fácil de extender**: Sistema de plugins para nuevos pinceles y gestos
 
-│   │   ├── brushes.py
+1. The class reads `canvas_state.json` to estimate color energy, stroke density, brush mode, and motion speed.
 
-│   │   ├── canvas.py## 🚀 Instalación
+2. A weighted prompt is assembled that maps colors, brushes, and dynamics to instruments, effects, and velocity.│   │   ├── brushes.py
 
-│   │   └── feedback.py
+3. The prompt is sent through a WebSocket session to the Lyria realtime endpoint.# LUMI Interactive Painting and Generative Music
 
-│   ├── utils/             # Utilidades### Requisitos Previos
+4. PCM24 audio chunks (mono, 24 kHz, 16 bit) arrive and are played immediately via PyAudio. The session reconnects on transient failures and stops gracefully when `stop()` is called.
 
-│   │   ├── utils.py       # Herramientas
+LUMI is an experimental application that combines gesture driven painting, optional voice commands, and real time generative music. The project explores digital transgression: physical movement becomes a virtual mark, and the disruption lives in the idea rather than the material.
 
-│   │   └── extensions.py  # Extensiones- Python 3.8 o superior
+Because Lyria returns fully mixed audio, no additional synthesis is performed on the client, preventing unwanted noise.
 
-│   └── main.py            # Aplicación principal- Webcam funcional
+## Quick start
 
-│
+## Project structure
 
-├── tests/                 # Tests unitarios### Instalación de Dependencias
+1. Create and activate a Python 3.10+ environment.
 
-│   └── test_components.py
+```2. Install dependencies:
 
-│```bash
+src/
 
-├── scripts/               # Scripts auxiliares# Clonar o descargar el proyecto
+  main.py               # Application loop and UI wiring```
 
-│   └── demo.py           # Demostracióncd proyecto
+  core/pip install -r requirements.txt
 
-│
+    config.py           # Global constants (window sizes, gesture thresholds, UI layout)```
 
-├── docs/                  # Documentación# Instalar dependencias
+    gesture_detector.py # MediaPipe wrapper and gesture helpers
 
-│   ├── README.md         # Guía completapip install -r requirements.txt
+    brushes.py          # Brush strategies and managerIf PyAudio fails on Windows run `pip install pipwin` followed by `pipwin install pyaudio`, or grab the wheel from the Gohlke archive.
 
-│   ├── ARCHITECTURE.md   # Arquitectura```
+    canvas.py           # Stroke storage, rendering, and serialization
 
-│   ├── CONTRIBUTING.md   # Contribución
+    feedback.py         # Tracking overlay drawingRun the app:
 
-│   └── PROJECT_SUMMARY.md### Dependencias Principales
+  utils/
 
-│
+    voice_feedback.py   # Text to speech helper```
 
-├── legacy/                # Código original- `opencv-python`: Procesamiento de imágenes y video
+    voice_listener.py   # Wake word listener and speech recognitionpython src/main.py
 
-│   └── french.py- `mediapipe`: Detección de gestos de mano
+    lyria_realtime.py   # Generative music client```
 
-│- `numpy`: Operaciones numéricas
+    extensions.py       # Miscellaneous utilities
 
-├── requirements.txt       # Dependencias
+legacy/                # Archived experiments and prior versionsOn launch the app prints basic instructions and, when text to speech is available, plays the phrase "LUMI ACTIVADO" once.
 
-└── start.bat             # Inicio rápido## 🎮 Uso
+requirements.txt       # Dependency list
+
+start.bat              # Windows entry point## Controls
 
 ```
 
-### Ejecutar la Aplicación
+Keyboard shortcuts:
 
-## 🎮 Controles
+## Troubleshooting
 
-```bash
+| Key | Action |
 
-### Tecladopython main.py
+| Problem | Hint || --- | --- |
 
-- `q` - Salir```
+| --- | --- || q | Quit |
 
-- `c` - Borrar lienzo
+| Camera fails to open | Use `--camera N`, try different backends in `open_camera`, or close other camera applications. || c | Clear canvas |
 
-- `1,2,3,4` - Cambiar color### Controles de Teclado
+| Gesture recognition is jittery | Adjust smoothing and threshold values in `core/config.py`. || 1-8 | Switch preset colors |
 
-- `t` - Cambiar tipo de pincel
+| Voice listener unavailable | Install `sounddevice` and `SpeechRecognition`, verify microphone permissions, and check RMS logs. || t | Cycle brush mode (line, dab, eraser) |
 
-- `s` - Cambiar tamaño| Tecla | Acción |
+| Text to speech silent | Install `pyttsx3` and `pypiwin32`, or enable PowerShell `System.Speech`. || s | Cycle brush size |
 
-|-------|--------|
-
-### Gestos| `q` | Salir del programa |
-
-- **Dibujar**: Dedo índice extendido, demás dedos flexionados| `c` | Borrar todo el lienzo |
-
-| `1` | Seleccionar color AZUL |
-
-## 📚 Documentación| `2` | Seleccionar color VERDE |
-
-| `3` | Seleccionar color ROJO |
-
-Ver documentación completa en [`docs/README.md`](docs/README.md)| `4` | Seleccionar color AMARILLO |
-
-| `t` | Cambiar tipo de pincel |
-
-## 🎨 Concepto Artístico| `s` | Cambiar tamaño de pincel |
+| Music not playing | Ensure PyAudio is installed and the Lyria API key is provided; watch the console for authentication errors. || v | Toggle voice listener (if dependencies are available) |
 
 
 
-Proyecto que explora la **transgresión digital** como forma de expresión artística contemporánea.### Gesto de Dibujo
+## Roadmap ideasGesture overview:
 
 
 
-## 📄 LicenciaPara dibujar:
+- Automatic PNG exports at a configurable interval.1. Drawing gesture requires the index finger extended and the middle finger flexed. The ring finger is ignored.
 
-1. **Extiende SOLO el dedo índice**
+- Additional brush styles (spray, watercolor, neon, glitch).2. A pinch gesture (index plus middle finger tips together) selects UI elements.
 
-Proyecto académico - Universidad PUCP2. Mantén los dedos corazón, anular y meñique **flexionados** hacia la palma
+- Music tempo and dynamics linked to stroke velocity.3. Hovering the pointer over a UI item for 1.2 seconds confirms the selection.
 
-3. El pulgar puede estar en cualquier posición
-4. Observa el feedback visual en la ventana 'Tracking' para ajustar tu mano
+- Collaborative multi user mode.
 
-💡 **Tip**: Ajusta `FLEXIBILITY_THRESHOLD` en `config.py` si el gesto es muy estricto o laxo.
+- Visual audio metering linked to the Lyria stream.UI state is shown in the Tracking window and the painting window overlay (current tool, color, size, hover countdown, voice/TTS status, and last spoken confirmation).
 
-## 🏗️ Arquitectura
 
-### Componentes Principales
 
-1. **`PaintApp`** (main.py)
-   - Orquestador principal de la aplicación
-   - Gestiona el bucle principal y coordinación de componentes
+## License
 
-2. **`GestureDetector`** (gesture_detector.py)
-   - Interfaz con MediaPipe Hands
-   - Detección de gestos específicos
-   - Extracción de posiciones de landmarks
 
-3. **`BrushManager`** (brushes.py)
-   - Gestión de tipos y tamaños de pinceles
-   - Patrón Strategy para diferentes algoritmos de dibujo
-   - Fácil extensión con nuevos pinceles
 
-4. **`Canvas`** (canvas.py)
-   - Representa el lienzo digital
-   - Almacena trazos por color y segmento
-   - Gestiona el estado del dibujo
+Academic project (UTEC). Intended for educational and experimental use. Review repository history for authorship details.1. `PaintApp` captures frames from the webcam and forwards them to `GestureDetector`.
 
-5. **`GestureFeedback`** (feedback.py)
-   - Retroalimentación visual en tiempo real
-   - Dibuja landmarks con código de colores
-   - Muestra estado de cada dedo
+2. `GestureDetector` (MediaPipe Hands) yields landmarks, checks drawing and pinch gestures, and provides a smoothed index tip position.
+3. `Canvas` keeps the active stroke object; `BrushManager` defines how points are rendered (line, dab, eraser).
+4. When a stroke is active, points are normalized and appended; `Canvas.render` paints all strokes onto a base image each frame.
+5. `GestureFeedback` draws the skeleton overlay in the tracking window.
+6. The UI layer displays color/brush/size boxes, hover timers, and voice diagnostics.
 
-6. **`Utils`** (utils.py)
-   - Exportación de imágenes
-   - Filtros artísticos
-   - Análisis de trazos
-   - Grabación de sesiones
+The canvas also emits incremental state snapshots (`canvas_state.json`) that other subsystems (such as the music client) can consume. The file is cleared when the app exits.
 
-### Principios de Diseño
+## Voice control (optional)
 
-✅ **SOLID Principles**
-- Single Responsibility: Cada clase tiene una responsabilidad clara
-- Open/Closed: Abierto a extensión, cerrado a modificación
-- Liskov Substitution: Subclases intercambiables (ej: Brushes)
-- Interface Segregation: Interfaces específicas
-- Dependency Inversion: Dependencias inyectadas
+Voice input is enabled when `sounddevice`, `SpeechRecognition`, and a microphone are available. The flow is:
 
-✅ **Design Patterns**
-- **Strategy**: Sistema de pinceles intercambiables
-- **Facade**: PaintApp simplifica la complejidad
-- **Template Method**: Brush como clase base abstracta
+1. Passive listener records short clips until it recognizes the wake word "lumi".
+2. An active window records a longer clip (default three seconds) and runs Google Speech Recognition on it.
+3. Recognized text is enqueued and processed on the main thread to keep the UI thread safe.
+4. Supported commands change colors ("color azul"), modes ("borrador", "modo linea", "modo punteado"), brush sizes ("grosor fino" or similar), and global actions ("limpiar", "salir").
+5. `VoiceFeedback` plays confirmations using `pyttsx3` if installed; otherwise it falls back to the Windows PowerShell `System.Speech` interface. The same message appears on screen for three seconds.
 
-✅ **Clean Code**
-- Nombres descriptivos
-- Funciones pequeñas y enfocadas
-- Documentación completa
-- Type hints cuando es posible
+Console logs show listener state, recognized text (passive and active), RMS values, and queue processing.
 
-### Flujo de Ejecución
+## Generative music
+
+`utils/lyria_realtime.py` connects to Google Lyria (model `lyria-realtime-exp`). It needs a valid API key in the `GOOGLE_AI_API_KEY` or `LYRIA_API_KEY` environment variable.
+
+Workflow:
+
+1. The class reads `canvas_state.json` to derive color intensity, brush mode, stroke density, and motion speed.
+2. A weighted prompt is built to describe the desired musical mood (instrument groups, dynamics, effects).
+3. The prompt is sent over a WebSocket session to the Lyria realtime endpoint.
+4. Incoming PCM24 audio chunks are played through PyAudio (mono, 24 kHz, 16-bit). The stream stops gracefully on errors or when `stop()` is called.
+
+Because the audio arrives already mixed from Lyria, the client does not apply additional synthesis that could introduce noise.
+
+## Project structure
 
 ```
-1. Captura de frame (Camera)
-   ↓
-2. Detección de manos (GestureDetector)
-   ↓
-3. Identificación de gesto (is_drawing_gesture)
-   ↓
-4. Extracción de posición (get_index_tip_position)
-   ↓
-5. Añadir punto al canvas (Canvas.add_point)
-   ↓
-6. Renderizado con pincel (Canvas.render + Brush)
-   ↓
-7. Feedback visual (GestureFeedback.draw)
-   ↓
-8. Mostrar en pantalla (cv2.imshow)
-   ↓
-9. Procesar entrada de teclado
-   ↓
-10. Repetir
+src/
+  main.py               # Application loop and UI
+  core/
+    config.py           # Constants (window sizes, gesture thresholds, UI layout)
+    gesture_detector.py # MediaPipe wrapper and gesture logic
+    brushes.py          # Brush definitions and manager
+    canvas.py           # Stroke storage and rendering
+    feedback.py         # Tracking window overlay
+  utils/
+    voice_feedback.py   # Text to speech helper
+    voice_listener.py   # Wake word and speech recognition thread
+    lyria_realtime.py   # Generative music client
+    extensions.py       # Miscellaneous helpers
+legacy/                # Archived experiments
+requirements.txt       # Dependency list
+start.bat              # Convenience launcher for Windows
 ```
 
-Ver [`ARCHITECTURE.md`](ARCHITECTURE.md) para más detalles.
+## Troubleshooting
 
-## 🎨 Concepto Artístico
+| Problem | Hint |
+| --- | --- |
+| Camera fails to open | Use `--camera N` or adjust backends in `open_camera`; ensure no other app holds the device. |
+| Gesture feels jittery | Tweak `LANDMARK_SMOOTHING_ALPHA` and thresholds in `core/config.py`. |
+| No voice recognition | Install `sounddevice` and `SpeechRecognition`, check microphone permissions, and confirm RMS logs are above the threshold. |
+| TTS unavailable | Install `pyttsx3` and `pypiwin32`, or enable PowerShell `System.Speech`. |
+| Music silent | Provide a valid API key and ensure PyAudio is installed; check logs for authentication errors. |
 
-Este proyecto explora la **transgresión digital** como forma de expresión artística contemporánea, donde:
+## Roadmap ideas
 
-- El gesto físico se transforma en marca virtual
-- Se cuestionan los límites entre lo material y lo digital
-- El arte no requiere soporte físico para existir
-- La transgresión se manifiesta en el mensaje, no solo en el medio
+- Automatic PNG exports at a configurable interval.
+- More brush styles (spray, watercolor, neon).
+- BPM and dynamics linked to stroke velocity for the music engine.
+- Collaborative mode over the network.
+- Visual audio meter synchronized with the Lyria stream.
 
-### Marco Conceptual
-
-Basado en la idea de que la transgresión artística en el espacio digital:
-
-1. **No requiere daño físico** para ser disruptiva
-2. **Amplifica el mensaje** a través de la viralidad digital
-3. **Redefine el concepto de propiedad** en espacios virtuales
-4. **Cuestiona narrativas dominantes** sin intervenir materialidad
-
-> "La transgresión se desplaza del acto material y se centra en lo que representa."
-
-### Referentes Teóricos
-
-- **Michel Foucault, Søren Kierkegaard, Georges Bataille**: Transgresión de límites
-- **Yuval Noah Harari**: Ficciones compartidas y orden social
-- **Arte transgresor contemporáneo**: Provocación y cuestionamiento de normas
-
-Ver documento conceptual completo para más información.
-
-## 🧪 Testing
-
-### Ejecutar Tests
-
-```bash
-# Todos los tests
-python -m unittest test_components.py -v
-
-# Tests específicos
-python -m unittest test_components.TestBrushes -v
-python -m unittest test_components.TestCanvas -v
-```
-
-### Cobertura de Tests
-
-- ✅ Sistema de pinceles (LineBrush, DabBrush, BrushManager)
-- ✅ Canvas (inicialización, add_point, clear, cambio de color)
-- ✅ Gestión de trazos (break_stroke, render)
-
-## 🔧 Extensibilidad
-
-### Añadir Nuevo Pincel
-
-```python
-# 1. Crear clase en extensions.py
-class MiPincel(Brush):
-    def draw(self, canvas, p1, p2, color):
-        # Tu lógica aquí
-        pass
-
-# 2. Registrar en brushes.py
-self._brushes['MI_PINCEL'] = MiPincel
-
-# 3. Añadir a config.py
-BRUSH_TYPES = ["LINEA", "DAB", "MI_PINCEL"]
-```
-
-### Añadir Nuevo Gesto
-
-```python
-# En gesture_detector.py o extensions.py
-@staticmethod
-def is_mi_gesto(landmarks):
-    # Lógica de detección
-    return condicion_cumplida
-```
-
-Ver [`CONTRIBUTING.md`](CONTRIBUTING.md) para guía completa de extensión.
-
-## 📚 Utilidades Incluidas
-
-### Filtros Artísticos (utils.py)
-
-```python
-from utils import ArtisticFilters
-
-# Aplicar filtros
-vintage_img = ArtisticFilters.apply_vintage(image)
-neon_img = ArtisticFilters.apply_neon(image)
-sketch_img = ArtisticFilters.apply_sketch(image)
-cartoon_img = ArtisticFilters.apply_cartoon(image)
-```
-
-### Exportación de Imágenes
-
-```python
-from utils import ImageExporter
-
-# Guardar imagen
-filepath = ImageExporter.save_png(canvas_image)
-
-# Guardar con metadatos
-ImageExporter.save_with_metadata(
-    canvas_image,
-    metadata={
-        'artist': 'Tu nombre',
-        'session_duration': 300,
-        'colors_used': ['AZUL', 'ROJO']
-    }
-)
-```
-
-### Análisis de Trazos
-
-```python
-from utils import StrokeAnalyzer
-
-# Obtener estadísticas
-stats = StrokeAnalyzer.get_session_stats(canvas.strokes)
-print(f"Longitud total: {stats['total_length_px']} px")
-print(f"Distribución de colores: {stats['color_distribution']}")
-```
-
-## 🚀 Mejoras Futuras
-
-- [ ] Sistema de capas con transparencia
-- [ ] Más tipos de pinceles (spray, caligrafía, glitch, neón, acuarela)
-- [ ] Gestos adicionales (borrar, deshacer, guardar)
-- [ ] Interfaz gráfica con botones virtuales activados por gestos
-- [ ] Filtros artísticos en tiempo real
-- [ ] Grabación de sesiones en video
-- [ ] Exportación a múltiples formatos (SVG, PDF)
-- [ ] Modo colaborativo (múltiples manos)
-- [ ] Integración con IA para sugerencias artísticas
-- [ ] Galería de obras guardadas
-- [ ] Sistema de plugins dinámicos
-
-## 📖 Documentación Adicional
-
-- [`ARCHITECTURE.md`](ARCHITECTURE.md) - Arquitectura detallada del sistema
-- [`CONTRIBUTING.md`](CONTRIBUTING.md) - Guía para contribuir y extender
-- [`extensions.py`](extensions.py) - Ejemplos de pinceles y gestos avanzados
-- [`utils.py`](utils.py) - Utilidades y herramientas auxiliares
-
-## 🐛 Resolución de Problemas
-
-### La cámara no se detecta
-
-```python
-# En main.py, cambiar el índice de la cámara
-self.cap = cv2.VideoCapture(1)  # Probar con 1, 2, etc.
-```
-
-### El gesto no se detecta correctamente
-
-```python
-# En config.py, ajustar el umbral de flexibilidad
-FLEXIBILITY_THRESHOLD = 0.03  # Aumentar para menos estricto
-FLEXIBILITY_THRESHOLD = 0.01  # Disminuir para más estricto
-```
-
-### Rendimiento bajo
-
-```python
-# En config.py, reducir resolución
-PAINT_WINDOW_WIDTH = 960
-PAINT_WINDOW_HEIGHT = 540
-```
-
-## 👥 Autores
-
-Proyecto académico - Universidad PUCP
-- Concepto artístico: Transgresión Digital
-- Desarrollo: Sistema modular de pintura con gestos
-
-## 📄 Licencia
-
-Proyecto educativo - Arte Digital y Nuevos Medios
-
----
-
-**¡Happy painting!** 🎨✨
-
-Para preguntas o sugerencias, revisa la documentación en `CONTRIBUTING.md`

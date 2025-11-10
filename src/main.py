@@ -488,7 +488,7 @@ class PaintApp:
 
         Esta función se mantiene como stub para evitar errores si todavía se
         llama desde otras partes del código. Anteriormente procesaba comandos
-        de voz (Lumi), pero esa funcionalidad fue desactivada y removida.
+        de voz (Damichi), pero esa funcionalidad fue desactivada y removida.
         """
         # Voz deshabilitada: no procesar.
         return

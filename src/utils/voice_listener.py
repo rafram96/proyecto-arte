@@ -11,8 +11,8 @@ except Exception:
 
 
 class VoiceListener:
-    """Escucha continua con wake-word ('lumi') y callback para comandos."""
-    def __init__(self, callback=None, wake_word='lumi', sample_rate=16000):
+    """Escucha continua con wake-word ('Damichi') y callback para comandos."""
+    def __init__(self, callback=None, wake_word='Damichi', sample_rate=16000):
         self.callback = callback
         self.wake_word = wake_word.lower()
         self.sample_rate = sample_rate
