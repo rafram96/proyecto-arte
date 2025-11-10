@@ -21,6 +21,10 @@ import shutil
 import time
 import os
 
+COLOR_SHORTCUT_KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=']
+NEXT_COLOR_KEY = 'n'
+PREV_COLOR_KEY = 'p'
+
 #abcd
 def _list_directshow_devices_ffmpeg():
     """Intentar listar dispositivos DirectShow usando ffmpeg."""
@@ -155,6 +159,15 @@ class PaintApp:
         self.canvas = Canvas(PAINT_WINDOW_WIDTH, PAINT_WINDOW_HEIGHT, COLORS)
         self.feedback = GestureFeedback()
         
+        # Configuración de atajos para colores extendidos
+        self.color_key_bindings = {}
+        self.color_shortcuts = []
+        for idx, key_char in enumerate(COLOR_SHORTCUT_KEYS):
+            if idx >= len(COLOR_NAMES):
+                break
+            self.color_key_bindings[ord(key_char)] = idx
+            self.color_shortcuts.append((key_char, COLOR_NAMES[idx]))
+
         # Configurar ventanas
         cv2.namedWindow(PAINT_WINDOW_NAME, cv2.WINDOW_AUTOSIZE)
         
@@ -235,7 +248,18 @@ class PaintApp:
         print("\n--- Control de Teclado ---")
         print(" 'q': Salir del programa")
         print(" 'c': Borrar todo el lienzo")
-        print(" '1', '2', '3', '4': Seleccionar color (AZUL, VERDE, ROJO, AMARILLO)")
+        if self.color_shortcuts:
+            print(" Atajos de color:")
+            chunk = 6
+            for start in range(0, len(self.color_shortcuts), chunk):
+                sub = self.color_shortcuts[start:start + chunk]
+                text = ", ".join(f"'{key}' -> {name}" for key, name in sub)
+                print(f"   {text}")
+        extra_colors = COLOR_NAMES[len(self.color_shortcuts):]
+        if extra_colors:
+            extras = ", ".join(extra_colors)
+            print(f" Selección por gestos/UI: {extras}")
+        print(f" '{NEXT_COLOR_KEY}': Siguiente color | '{PREV_COLOR_KEY}': Color anterior")
         print(" 't': Cambiar tipo de pincel (LINEA / DAB)")
         print(" 's': Cambiar tamaño de pincel (PEQUEÑO / MEDIANO / GRANDE)")
         print("\n--- Dibujo con la Mano ---")
@@ -254,18 +278,23 @@ class PaintApp:
         elif key == ord("c"):
             self.canvas.clear()
             print("Lienzo borrado.")
-        elif key == ord("1"):
-            color = self.canvas.set_color(0)
-            print(f"Color seleccionado: {color}")
-        elif key == ord("2"):
-            color = self.canvas.set_color(1)
-            print(f"Color seleccionado: {color}")
-        elif key == ord("3"):
-            color = self.canvas.set_color(2)
-            print(f"Color seleccionado: {color}")
-        elif key == ord("4"):
-            color = self.canvas.set_color(3)
-            print(f"Color seleccionado: {color}")
+        elif key in self.color_key_bindings:
+            color_index = self.color_key_bindings[key]
+            color = self.canvas.set_color(color_index)
+            if color:
+                print(f"Color seleccionado: {color}")
+        elif key == ord(NEXT_COLOR_KEY):
+            total = len(self.canvas.color_names)
+            next_idx = (self.canvas.current_color_index + 1) % total
+            color = self.canvas.set_color(next_idx)
+            if color:
+                print(f"Color seleccionado: {color}")
+        elif key == ord(PREV_COLOR_KEY):
+            total = len(self.canvas.color_names)
+            prev_idx = (self.canvas.current_color_index - 1) % total
+            color = self.canvas.set_color(prev_idx)
+            if color:
+                print(f"Color seleccionado: {color}")
         elif key == ord("t"):
             brush_type = self.brush_manager.next_type()
             print(f"Tipo de pincel: {brush_type}")
@@ -344,33 +373,44 @@ class PaintApp:
     def _build_ui_items(self):
         """Construye una lista de elementos UI con sus rectángulos en coordenadas del canvas."""
         items = []
+        max_width = self.canvas.width - UI_BOX_SPACING
         x = UI_BOX_SPACING
         y = UI_TOP_PADDING
 
+        def next_rect():
+            nonlocal x, y
+            if x + UI_BOX_SIZE > max_width:
+                x = UI_BOX_SPACING
+                y += UI_BOX_SIZE + UI_BOX_SPACING
+            rect = (x, y, UI_BOX_SIZE, UI_BOX_SIZE)
+            x += UI_BOX_SIZE + UI_BOX_SPACING
+            return rect
+
         # Colores
         for i, name in enumerate(COLOR_NAMES):
-            rect = (x, y, UI_BOX_SIZE, UI_BOX_SIZE)
+            rect = next_rect()
             items.append({'type': 'color', 'value': name, 'rect': rect, 'index': i})
-            x += UI_BOX_SIZE + UI_BOX_SPACING
+
+        # Forzar una nueva fila para herramientas y pinceles
+        colors_bottom = y + UI_BOX_SIZE
+        x = UI_BOX_SPACING
+        y = colors_bottom + UI_BOX_SPACING
 
         # Borrador (herramienta)
-        rect = (x, y, UI_BOX_SIZE, UI_BOX_SIZE)
+        rect = next_rect()
         items.append({'type': 'tool', 'value': 'ERASER', 'rect': rect})
-        x += UI_BOX_SIZE + UI_BOX_SPACING
 
         # Tipos de pincel (excluir ERASER si ya mostrado)
         for bt in BRUSH_TYPES:
             if bt == 'ERASER':
                 continue
-            rect = (x, y, UI_BOX_SIZE, UI_BOX_SIZE)
+            rect = next_rect()
             items.append({'type': 'brush', 'value': bt, 'rect': rect})
-            x += UI_BOX_SIZE + UI_BOX_SPACING
 
         # Tamaños
         for sz in BRUSH_SIZES:
-            rect = (x, y, UI_BOX_SIZE, UI_BOX_SIZE)
+            rect = next_rect()
             items.append({'type': 'size', 'value': sz, 'rect': rect})
-            x += UI_BOX_SIZE + UI_BOX_SPACING
 
         return items
 
@@ -564,8 +604,22 @@ class PaintApp:
                 try:
                     if item.get('type') == 'color':
                         human_map = {
-                            'AZUL': 'Azul', 'VERDE': 'Verde', 'ROJO': 'Rojo', 'AMARILLO': 'Amarillo',
-                            'NEGRO': 'Negro', 'BLANCO': 'Blanco', 'PURPURA': 'Morado', 'NARANJA': 'Naranja'
+                            'AZUL': 'Azul',
+                            'VERDE': 'Verde',
+                            'ROJO': 'Rojo',
+                            'AMARILLO': 'Amarillo',
+                            'CYAN': 'Cian',
+                            'MAGENTA': 'Magenta',
+                            'ROSA': 'Rosa',
+                            'GRIS': 'Gris',
+                            'TURQUESA': 'Turquesa',
+                            'INDIGO': 'Indigo',
+                            'DORADO': 'Dorado',
+                            'MARRON': 'Marron',
+                            'NEGRO': 'Negro',
+                            'BLANCO': 'Blanco',
+                            'PURPURA': 'Morado',
+                            'NARANJA': 'Naranja'
                         }
                         color_code = item.get('value')
                         human_name = human_map.get(color_code, color_code.title() if isinstance(color_code, str) else str(color_code))

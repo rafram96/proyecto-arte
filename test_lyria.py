@@ -11,8 +11,7 @@ import json
 # Añadir src al path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
-from utils.lyria_realtime import LyriaRealtimeAudio
-
+from src.utils.lyria_realtime import LyriaRealtimeAudio
 
 def create_test_canvas_state():
     """Crea un archivo canvas_state.json de prueba."""

@@ -84,7 +84,12 @@ class BrushManager:
         self.brush_types = brush_types
         self.brush_sizes = brush_sizes
         self.current_type_index = 0
-        self.current_size_index = 0
+
+        default_size = 10
+        if default_size in self.brush_sizes:
+            self.current_size_index = self.brush_sizes.index(default_size)
+        else:
+            self.current_size_index = 0
         self._brushes = {
             'LINEA': LineBrush,
             'DAB': DabBrush

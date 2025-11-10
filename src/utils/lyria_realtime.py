@@ -36,14 +36,22 @@ class LyriaRealtimeAudio:
     
     # Mapeo simple de colores a instrumentos
     COLOR_TO_INSTRUMENT = {
-        "AZUL": "peruvian harp",
-        "VERDE": "andean guitar peru", 
-        "ROJO": "viola",
-        "AMARILLO": "peruvian ocarina",
+        "AZUL": "peruvian harp arpeggios",
+        "VERDE": "charango strums",
+        "ROJO": "viola cantabile",
+        "AMARILLO": "peruvian ocarina melody",
+        "CYAN": "siku pan flute choir",
+        "MAGENTA": "quena flute vibrato",
+        "ROSA": "andino violin harmonics",
+        "GRIS": "rainstick ambience",
+        "TURQUESA": "pan flute glissandos",
+        "INDIGO": "bombo leguero pulses",
+        "DORADO": "huayno brass trumpet",
+        "MARRON": "cajon peruano grooves",
         "NEGRO": "piano",
-        "BLANCO": "harp",
-        "PURPURA": "drums",
-        "NARANJA": "trumpet"
+        "BLANCO": "harp harmonics",
+        "PURPURA": "cajita metallic hits",
+        "NARANJA": "festival brass fanfare"
     }
 
     # Dinámicas sugeridas por tipo de pincel
