@@ -85,6 +85,8 @@ class BrushManager:
         self.brush_sizes = brush_sizes
         self.current_type_index = 0
 
+        self._last_paint_type_index = self._find_first_paint_index()
+
         default_size = 10
         if default_size in self.brush_sizes:
             self.current_size_index = self.brush_sizes.index(default_size)
@@ -98,6 +100,12 @@ class BrushManager:
         # Registrar borrador si está declarado en tipos
         if 'ERASER' in self.brush_types:
             self._brushes['ERASER'] = EraserBrush
+
+    def _find_first_paint_index(self):
+        for idx, name in enumerate(self.brush_types):
+            if name != 'ERASER':
+                return idx
+        return 0
     
     def get_current_brush(self):
         """Retorna el pincel actual configurado."""
@@ -114,6 +122,8 @@ class BrushManager:
     def next_type(self):
         """Cambia al siguiente tipo de pincel."""
         self.current_type_index = (self.current_type_index + 1) % len(self.brush_types)
+        if self.get_current_type_name() != 'ERASER':
+            self._last_paint_type_index = self.current_type_index
         return self.get_current_type_name()
     
     def next_size(self):
@@ -128,3 +138,17 @@ class BrushManager:
     def get_current_size(self):
         """Retorna el tamaño actual del pincel."""
         return self.brush_sizes[self.current_size_index]
+
+    def set_type_by_name(self, brush_type):
+        """Selecciona un tipo de pincel específico por nombre."""
+        if brush_type in self.brush_types:
+            self.current_type_index = self.brush_types.index(brush_type)
+            if brush_type != 'ERASER':
+                self._last_paint_type_index = self.current_type_index
+        return self.get_current_type_name()
+
+    def ensure_paint_brush(self):
+        """Garantiza que el pincel activo sea uno que pinte (no borrador)."""
+        if self.get_current_type_name() == 'ERASER':
+            self.current_type_index = self._last_paint_type_index
+        return self.get_current_type_name()

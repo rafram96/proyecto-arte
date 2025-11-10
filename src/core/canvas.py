@@ -89,6 +89,30 @@ class Canvas:
 
     def end_stroke(self):
         """Finaliza el trazo actual (si existe)."""
+        if self.current_stroke is None:
+            return
+
+        if self.current_stroke.get('brush_type') == 'ERASER':
+            eraser_stroke = self.current_stroke
+            cleaned_strokes = []
+            threshold = eraser_stroke.get('brush_size', 0) + ERASER_DISTANCE_THRESHOLD
+
+            for stroke in self.strokes:
+                if stroke is eraser_stroke:
+                    continue
+                if stroke.get('brush_type') == 'ERASER':
+                    # Cualquier borrador previo ya debería haber actuado; omitirlo.
+                    continue
+                if self._stroke_intersects(stroke['points'], eraser_stroke['points'], threshold):
+                    continue
+                cleaned_strokes.append(stroke)
+
+            self.strokes = cleaned_strokes
+        else:
+            # Asegurar que el trazo actual queda en la lista de trazos finales
+            if self.current_stroke not in self.strokes:
+                self.strokes.append(self.current_stroke)
+
         self.current_stroke = None
         self._save_to_file()  # Guardar al finalizar trazo
     

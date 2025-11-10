@@ -283,18 +283,21 @@ class PaintApp:
             color = self.canvas.set_color(color_index)
             if color:
                 print(f"Color seleccionado: {color}")
+                self.brush_manager.ensure_paint_brush()
         elif key == ord(NEXT_COLOR_KEY):
             total = len(self.canvas.color_names)
             next_idx = (self.canvas.current_color_index + 1) % total
             color = self.canvas.set_color(next_idx)
             if color:
                 print(f"Color seleccionado: {color}")
+                self.brush_manager.ensure_paint_brush()
         elif key == ord(PREV_COLOR_KEY):
             total = len(self.canvas.color_names)
             prev_idx = (self.canvas.current_color_index - 1) % total
             color = self.canvas.set_color(prev_idx)
             if color:
                 print(f"Color seleccionado: {color}")
+                self.brush_manager.ensure_paint_brush()
         elif key == ord("t"):
             brush_type = self.brush_manager.next_type()
             print(f"Tipo de pincel: {brush_type}")
@@ -506,16 +509,17 @@ class PaintApp:
             idx = item.get('index', 0)
             color = self.canvas.set_color(idx)
             print(f"Color seleccionado (UI): {color}")
+            self.brush_manager.ensure_paint_brush()
         elif item['type'] == 'tool':
             val = item['value']
             # set brush type if exists
             if val in self.brush_manager.brush_types:
-                self.brush_manager.current_type_index = self.brush_manager.brush_types.index(val)
+                self.brush_manager.set_type_by_name(val)
                 print(f"Herramienta seleccionada: {val}")
         elif item['type'] == 'brush':
             val = item['value']
             if val in self.brush_manager.brush_types:
-                self.brush_manager.current_type_index = self.brush_manager.brush_types.index(val)
+                self.brush_manager.set_type_by_name(val)
                 print(f"Tipo de pincel seleccionado (UI): {val}")
         elif item['type'] == 'size':
             val = item['value']
