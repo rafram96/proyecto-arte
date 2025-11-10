@@ -37,14 +37,41 @@ class LyriaRealtimeAudio:
     # Mapeo simple de colores a instrumentos
     COLOR_TO_INSTRUMENT = {
         "AZUL": "peruvian harp",
-        "VERDE": "cholo berrocal", 
+        "VERDE": "andean guitar peru", 
         "ROJO": "viola",
-        "AMARILLO": "quena",
+        "AMARILLO": "peruvian ocarina",
         "NEGRO": "piano",
         "BLANCO": "harp",
         "PURPURA": "drums",
         "NARANJA": "trumpet"
     }
+
+    # Dinámicas sugeridas por tipo de pincel
+    BRUSH_TO_DYNAMIC = {
+        "LINEA": {
+            "label": "legato phrasing",
+            "tempo_shift": -4,
+            "temperature": 0.72,
+        },
+        "DAB": {
+            "label": "staccato pulses",
+            "tempo_shift": 10,
+            "temperature": 0.92,
+        },
+        "ERASER": {
+            "label": "gentle rests",
+            "tempo_shift": -12,
+            "temperature": 0.6,
+        },
+    }
+
+    DEFAULT_DYNAMIC = {
+        "label": "steady pulse",
+        "tempo_shift": 0,
+        "temperature": 0.8,
+    }
+
+    DYNAMIC_MEMORY_SECONDS = 4.0
     
     def __init__(self, api_key: str, canvas_state_file: str = "canvas_state.json"):
         """
@@ -87,8 +114,11 @@ class LyriaRealtimeAudio:
         self.current_instruments = set()  # Instrumentos activos
         self.current_bpm = 140  # BPM más rápido para música andina/dinámica
         self.current_temperature = 0.8  # Más variación
+        self.base_bpm = self.current_bpm
         self.global_scale = types.Scale.C_MAJOR_A_MINOR if GENAI_AVAILABLE else None
         self.last_prompt_update = 0  # Control de frecuencia de updates
+        self.dynamic_usage: Dict[str, float] = {}
+        self.last_config_update = 0.0
         
         # Modo simulación
         self.simulation_mode = not GENAI_AVAILABLE or self.client is None
@@ -230,7 +260,8 @@ class LyriaRealtimeAudio:
         return {
             'instrument': instrument,
             'color': color,
-            'timestamp': timestamp
+            'timestamp': timestamp,
+            'brush_type': brush_type
         }
     
     def _audio_thread_runner(self):
@@ -475,28 +506,103 @@ class LyriaRealtimeAudio:
         """
         try:
             instrument = event['instrument']
-            
+            brush_type = event.get('brush_type', 'LINEA')
+            now = time.time()
+
             # Agregar instrumento al set de activos
             self.current_instruments.add(instrument)
-            
+
+            # Registrar dinámica asociada al tipo de pincel
+            dynamic_info = self.BRUSH_TO_DYNAMIC.get(brush_type, self.DEFAULT_DYNAMIC)
+            dynamic_label = dynamic_info.get('label')
+            if dynamic_label:
+                self.dynamic_usage[dynamic_label] = now
+
+            # Eliminar dinámicas antiguas para mantener el contexto fresco
+            self._prune_stale_dynamics(now)
+
+            # Ajustar configuración global si la dinámica lo requiere
+            await self._apply_dynamic_config(session, dynamic_info, now)
+
             # Actualizar prompts cada 1 segundo para ser más dinámico
-            current_time = time.time()
-            if current_time - self.last_prompt_update < 1.0:
+            if now - self.last_prompt_update < 1.0:
                 return
-            
-            self.last_prompt_update = current_time
-            
-            # Crear prompts SIMPLES solo con instrumentos activos
-            prompts = [types.WeightedPrompt(text=inst, weight=1.0) 
-                      for inst in self.current_instruments]
-            
+
+            self.last_prompt_update = now
+
+            # Crear prompts con instrumentos activos y dinámicas recientes
+            prompts = [types.WeightedPrompt(text=inst, weight=1.0)
+                       for inst in self.current_instruments]
+
+            active_dynamics = list(self.dynamic_usage.keys())
+            for label in active_dynamics:
+                prompts.append(types.WeightedPrompt(text=label, weight=0.4))
+
             if prompts:
                 await session.set_weighted_prompts(prompts=prompts)
-                print(f"🎵 Activos: {', '.join(self.current_instruments)}")
+                if active_dynamics:
+                    print(f"🎵 Activos: {', '.join(self.current_instruments)} | Dinámicas: {', '.join(active_dynamics)}")
+                else:
+                    print(f"🎵 Activos: {', '.join(self.current_instruments)}")
             
         except Exception as e:
             print(f"❌ Error: {e}")
     
+    async def _apply_dynamic_config(self, session, dynamic_info: Dict, current_time: float):
+        """Suaviza cambios de tempo/temperatura según la dinámica seleccionada."""
+        if not GENAI_AVAILABLE:
+            return
+
+        if current_time - self.last_config_update < 0.4:
+            return
+
+        tempo_shift = dynamic_info.get('tempo_shift', 0)
+        target_bpm = self._clamp(self.base_bpm + tempo_shift, 90, 180)
+        target_temperature = dynamic_info.get('temperature', self.current_temperature)
+
+        new_bpm = self._smooth_value(self.current_bpm, target_bpm, factor=0.5)
+        new_temperature = self._smooth_value(self.current_temperature, target_temperature, factor=0.35)
+        new_temperature = self._clamp(new_temperature, 0.1, 1.2)
+
+        if (
+            abs(new_bpm - self.current_bpm) < 0.05
+            and abs(new_temperature - self.current_temperature) < 0.01
+        ):
+            return
+
+        self.current_bpm = new_bpm
+        self.current_temperature = new_temperature
+
+        await session.set_music_generation_config(
+            config=types.LiveMusicGenerationConfig(
+                bpm=int(round(self.current_bpm)),
+                temperature=self.current_temperature,
+                scale=self.global_scale,
+                music_generation_mode=types.MusicGenerationMode.QUALITY
+            )
+        )
+        self.last_config_update = current_time
+
+    def _prune_stale_dynamics(self, current_time: float):
+        """Elimina dinámicas que no se han usado recientemente."""
+        stale_labels = [
+            label for label, seen_at in self.dynamic_usage.items()
+            if current_time - seen_at > self.DYNAMIC_MEMORY_SECONDS
+        ]
+        for label in stale_labels:
+            self.dynamic_usage.pop(label, None)
+
+    @staticmethod
+    def _smooth_value(current: float, target: float, factor: float = 0.5) -> float:
+        """Interpolación lineal simple entre valores actuales y objetivo."""
+        factor = max(0.0, min(1.0, factor))
+        return current + (target - current) * factor
+
+    @staticmethod
+    def _clamp(value: float, minimum: float, maximum: float) -> float:
+        """Limita un valor dentro de un rango específico."""
+        return max(minimum, min(maximum, value))
+
     async def _play_audio_async(self, audio_data: bytes):
         """
         Reproduce audio con MÁXIMA calidad - Procesamiento profesional.
