@@ -13,11 +13,13 @@ from core.gesture_detector import GestureDetector
 from core.brushes import BrushManager
 from core.canvas import Canvas
 from core.feedback import GestureFeedback
+from utils.lyria_realtime import LyriaRealtimeAudio
 import argparse
 import queue
 import subprocess
 import shutil
 import time
+import os
 
 #abcd
 def _list_directshow_devices_ffmpeg():
@@ -201,6 +203,29 @@ class PaintApp:
             self._voice_unavailable_printed = True
         except Exception:
             pass
+        
+        # Inicializar Lyria RealTime Audio (música generativa)
+        self.lyria_audio = None
+        self._init_lyria_audio()
+    
+    def _init_lyria_audio(self):
+        """Inicializa el sistema de audio generativo con Lyria."""
+        try:
+            # API key de Google AI (Lyria)
+            api_key = "AIzaSyDKwc_xHyuuq5-z2PeV8pLiIpQQ0cwmS8c"
+            
+            # También intentar desde variable de entorno si está definida
+            api_key = os.environ.get('GOOGLE_AI_API_KEY') or os.environ.get('LYRIA_API_KEY') or api_key
+            
+            self.lyria_audio = LyriaRealtimeAudio(
+                api_key=api_key,
+                canvas_state_file="canvas_state.json"
+            )
+            self.lyria_audio.start()
+            print("🎵 Sistema de música generativa Lyria activado")
+        except Exception as e:
+            print(f"⚠️  No se pudo inicializar Lyria: {e}")
+            self.lyria_audio = None
     
     def print_instructions(self):
         """Imprime las instrucciones de uso."""
@@ -629,6 +654,13 @@ class PaintApp:
     
     def cleanup(self):
         """Limpia recursos antes de cerrar."""
+        # Detener Lyria Audio si está activo
+        if self.lyria_audio:
+            try:
+                self.lyria_audio.stop()
+            except Exception as e:
+                print(f"Error deteniendo Lyria: {e}")
+        
         # Eliminar archivo de guardado automático
         self.canvas.delete_save_file()
         
