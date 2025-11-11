@@ -428,6 +428,7 @@ class PaintApp:
         """Dibuja los recuadros UI sobre la imagen del canvas."""
         for it in ui_items:
             x, y, w, h = it['rect']
+            label_color = (0, 0, 0)
             if it['type'] == 'color':
                 color_bgr = self.canvas.colors.get(it['value'], (200, 200, 200))
                 cv2.rectangle(img, (x, y), (x + w, y + h), color_bgr, -1)
@@ -443,7 +444,8 @@ class PaintApp:
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, text_color, 2, cv2.LINE_AA)
             else:
                 # Fondo gris para otros elementos (pinceles, tamaños, etc.)
-                cv2.rectangle(img, (x, y), (x + w, y + h), (240, 240, 240), -1)
+                cv2.rectangle(img, (x, y), (x + w, y + h), (60, 60, 60), -1)
+                label_color = (240, 240, 240)
 
             # Borde general
             cv2.rectangle(img, (x, y), (x + w, y + h), (210, 210, 210), 1)
@@ -460,7 +462,7 @@ class PaintApp:
 
             if label:
                 cv2.putText(img, label, (x + 6, y + h - 8),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1, cv2.LINE_AA)
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, label_color, 1, cv2.LINE_AA)
 
         # --- Dibujo del cursor y hover ---
         if pointer_norm is not None:

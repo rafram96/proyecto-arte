@@ -6,6 +6,7 @@ import cv2
 import numpy as np
 import random
 from abc import ABC, abstractmethod
+from .config import DAB_JITTER_ENABLED
 
 
 class Brush(ABC):
@@ -39,7 +40,17 @@ class LineBrush(Brush):
 
 class DabBrush(Brush):
     """Pincel con efecto impresionista (dabs)."""
-    
+
+    def __init__(self, size, jitter=True):
+        super().__init__(size)
+        self.jitter = jitter
+
+    def _rng(self, p1, p2, step):
+        if self.jitter:
+            return random
+        seed = f"{p1[0]}_{p1[1]}_{p2[0]}_{p2[1]}_{step}_{self.size}"
+        return random.Random(seed)
+
     def draw(self, canvas, p1, p2, color):
         if p1 is None or p2 is None:
             return
@@ -54,10 +65,11 @@ class DabBrush(Brush):
             dab_x = int(p1[0] * (1 - alpha) + p2[0] * alpha)
             dab_y = int(p1[1] * (1 - alpha) + p2[1] * alpha)
             
-            offset_x = random.randint(-self.size // 2, self.size // 2)
-            offset_y = random.randint(-self.size // 2, self.size // 2)
-            
-            random_radius_offset = random.randint(-self.size // 3, self.size // 3)
+            rng = self._rng(p1, p2, step)
+            offset_x = rng.randint(-self.size // 2, self.size // 2)
+            offset_y = rng.randint(-self.size // 2, self.size // 2)
+
+            random_radius_offset = rng.randint(-self.size // 3, self.size // 3)
             dab_radius = max(1, self.size + random_radius_offset)
             
             final_dab_x = max(0, min(canvas_width - 1, dab_x + offset_x))
@@ -86,6 +98,7 @@ class BrushManager:
         self.current_type_index = 0
 
         self._last_paint_type_index = self._find_first_paint_index()
+        self.dab_jitter_enabled = DAB_JITTER_ENABLED
 
         default_size = 10
         if default_size in self.brush_sizes:
@@ -112,11 +125,15 @@ class BrushManager:
         brush_type = self.brush_types[self.current_type_index]
         brush_size = self.brush_sizes[self.current_size_index]
         brush_class = self._brushes.get(brush_type, LineBrush)
+        if brush_class is DabBrush:
+            return brush_class(brush_size, jitter=self.dab_jitter_enabled)
         return brush_class(brush_size)
 
     def get_brush_by_name(self, brush_type, brush_size):
         """Retorna una instancia de pincel por nombre y tamaño."""
         brush_class = self._brushes.get(brush_type, LineBrush)
+        if brush_class is DabBrush:
+            return brush_class(brush_size, jitter=self.dab_jitter_enabled)
         return brush_class(brush_size)
     
     def next_type(self):
@@ -152,3 +169,7 @@ class BrushManager:
         if self.get_current_type_name() == 'ERASER':
             self.current_type_index = self._last_paint_type_index
         return self.get_current_type_name()
+
+    def set_dab_jitter(self, enabled: bool):
+        """Permite activar/desactivar el jitter aleatorio del pincel DAB."""
+        self.dab_jitter_enabled = bool(enabled)
