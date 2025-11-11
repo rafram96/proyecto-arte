@@ -260,7 +260,9 @@ class PaintApp:
             extras = ", ".join(extra_colors)
             print(f" Selección por gestos/UI: {extras}")
         print(f" '{NEXT_COLOR_KEY}': Siguiente color | '{PREV_COLOR_KEY}': Color anterior")
-        print(" 't': Cambiar tipo de pincel (LINEA / DAB)")
+        active_brushes = [bt for bt in BRUSH_TYPES if bt != 'ERASER']
+        brushes_text = ' / '.join(active_brushes)
+        print(f" 't': Cambiar tipo de pincel ({brushes_text})")
         print(" 's': Cambiar tamaño de pincel (PEQUEÑO / MEDIANO / GRANDE)")
         print("\n--- Dibujo con la Mano ---")
         print("Para dibujar, extiende SOLO tu dedo índice.")
@@ -455,7 +457,13 @@ class PaintApp:
             if it['type'] == 'tool' and it['value'] == 'ERASER':
                 label = 'E'
             elif it['type'] == 'brush':
-                brush_label_map = {'LINEA': 'L', 'DAB': 'D', 'ERASER': 'E'}
+                brush_label_map = {
+                    'LINEA': 'L',
+                    'DAB': 'D',
+                    'SPRAY': 'S',
+                    'CALIGRAFIA': 'C',
+                    'ERASER': 'E',
+                }
                 label = brush_label_map.get(it['value'], it['value'][0])
             elif it['type'] == 'size':
                 label = str(it['value'])

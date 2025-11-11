@@ -31,7 +31,9 @@ MIN_DETECTION_CONFIDENCE = 0.6
 MIN_TRACKING_CONFIDENCE = 0.7
 FLEXIBILITY_THRESHOLD = 0.03
 
+# PUNTOS PARPADEANTES
 DAB_JITTER_ENABLED = False
+
 # Colores disponibles (B, G, R, Y) - OpenCV usa BGR
 COLORS = {
     'AZUL': (255, 106, 31),
@@ -82,7 +84,13 @@ COLOR_NAMES = [
 ]
 
 # Tipos de pincel disponibles
-BRUSH_TYPES = ["LINEA", "DAB", "ERASER"]
+BRUSH_TYPES = [
+    "LINEA",
+    "DAB",
+    "SPRAY",
+    "CALIGRAFIA",
+    "ERASER"
+]
 
 # Tamaños de pincel disponibles
 BRUSH_SIZES = [2, 5, 10, 20, 50]  # Pequeño, Mediano, Grande, Gigante (20), Jumbo (50)

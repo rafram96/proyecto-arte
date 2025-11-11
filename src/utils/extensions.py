@@ -55,95 +55,6 @@ class CalligraphyBrush(Brush):
         cv2.line(canvas, p1, p2, color, thickness)
 
 
-class GlitchBrush(Brush):
-    """Pincel con efecto glitch/distorsión digital (arte transgresor)."""
-    
-    def draw(self, canvas, p1, p2, color):
-        if p1 is None or p2 is None:
-            return
-        
-        # Dibujar múltiples copias desplazadas con colores aleatorios
-        offsets = [(-2, 0), (2, 0), (0, -2), (0, 2), (-1, -1), (1, 1)]
-        
-        for offset in offsets:
-            glitch_p1 = (p1[0] + offset[0], p1[1] + offset[1])
-            glitch_p2 = (p2[0] + offset[0], p2[1] + offset[1])
-            
-            # Color aleatorio para efecto glitch
-            glitch_color = tuple([random.randint(0, 255) for _ in range(3)])
-            
-            cv2.line(canvas, glitch_p1, glitch_p2, glitch_color, 
-                    max(1, self.size // 2))
-        
-        # Dibujar trazo original encima
-        cv2.line(canvas, p1, p2, color, self.size)
-
-
-class NeonBrush(Brush):
-    """Pincel con efecto neón (glow)."""
-    
-    def draw(self, canvas, p1, p2, color):
-        if p1 is None or p2 is None:
-            return
-        
-        # Dibujar capas con transparencia simulada
-        # Capa externa (glow)
-        for i in range(3, 0, -1):
-            thickness = self.size + i * 2
-            alpha = 0.3
-            
-            # Crear una copia temporal para el efecto de transparencia
-            overlay = canvas.copy()
-            cv2.line(overlay, p1, p2, color, thickness)
-            cv2.addWeighted(overlay, alpha, canvas, 1 - alpha, 0, canvas)
-        
-        # Núcleo brillante
-        bright_color = tuple([min(255, c + 100) for c in color])
-        cv2.line(canvas, p1, p2, bright_color, max(1, self.size // 2))
-
-
-class WatercolorBrush(Brush):
-    """Pincel con efecto acuarela."""
-    
-    def draw(self, canvas, p1, p2, color):
-        if p1 is None or p2 is None:
-            return
-        
-        canvas_height, canvas_width = canvas.shape[:2]
-        
-        # Calcular puntos a lo largo de la línea
-        distance = np.sqrt((p2[0] - p1[0]) ** 2 + (p2[1] - p1[1]) ** 2)
-        num_points = max(5, int(distance / 3))
-        
-        for i in range(num_points):
-            t = i / max(1, num_points - 1)
-            x = int(p1[0] * (1 - t) + p2[0] * t)
-            y = int(p1[1] * (1 - t) + p2[1] * t)
-            
-            # Manchas irregulares con variación de color
-            for _ in range(random.randint(2, 5)):
-                offset_x = random.randint(-self.size, self.size)
-                offset_y = random.randint(-self.size, self.size)
-                
-                blob_x = x + offset_x
-                blob_y = y + offset_y
-                
-                if 0 <= blob_x < canvas_width and 0 <= blob_y < canvas_height:
-                    # Variación sutil de color
-                    color_var = tuple([
-                        max(0, min(255, c + random.randint(-20, 20))) 
-                        for c in color
-                    ])
-                    
-                    radius = random.randint(1, self.size // 2)
-                    
-                    # Usar transparencia simulada
-                    overlay = canvas.copy()
-                    cv2.circle(overlay, (blob_x, blob_y), radius, color_var, -1)
-                    alpha = random.uniform(0.3, 0.7)
-                    cv2.addWeighted(overlay, alpha, canvas, 1 - alpha, 0, canvas)
-
-
 # ============================================================================
 # CÓMO USAR ESTOS NUEVOS PINCELES
 # ============================================================================
@@ -153,7 +64,7 @@ Para usar estos nuevos pinceles, simplemente:
 
 1. Importa las nuevas clases en brushes.py:
    
-   from extensions import SprayBrush, CalligraphyBrush, GlitchBrush, NeonBrush
+    from extensions import SprayBrush, CalligraphyBrush
 
 2. Añádelas al diccionario de BrushManager._brushes:
    
@@ -161,15 +72,12 @@ Para usar estos nuevos pinceles, simplemente:
        'LINEA': LineBrush,
        'DAB': DabBrush,
        'SPRAY': SprayBrush,
-       'CALIGRAFIA': CalligraphyBrush,
-       'GLITCH': GlitchBrush,
-       'NEON': NeonBrush,
-       'ACUARELA': WatercolorBrush
+          'CALIGRAFIA': CalligraphyBrush
    }
 
 3. Actualiza BRUSH_TYPES en config.py:
    
-   BRUSH_TYPES = ["LINEA", "DAB", "SPRAY", "CALIGRAFIA", "GLITCH", "NEON", "ACUARELA"]
+    BRUSH_TYPES = ["LINEA", "DAB", "SPRAY", "CALIGRAFIA"]
 
 ¡Eso es todo! El sistema automáticamente los incluirá en la rotación.
 """

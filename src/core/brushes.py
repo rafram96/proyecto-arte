@@ -114,6 +114,9 @@ class BrushManager:
         if 'ERASER' in self.brush_types:
             self._brushes['ERASER'] = EraserBrush
 
+        self._external_brushes_registered = False
+        self._register_external_brushes()
+
     def _find_first_paint_index(self):
         for idx, name in enumerate(self.brush_types):
             if name != 'ERASER':
@@ -173,3 +176,27 @@ class BrushManager:
     def set_dab_jitter(self, enabled: bool):
         """Permite activar/desactivar el jitter aleatorio del pincel DAB."""
         self.dab_jitter_enabled = bool(enabled)
+
+    def _register_external_brushes(self):
+        """Carga pinceles definidos en utils.extensions si están disponibles."""
+        if self._external_brushes_registered:
+            return
+
+        try:
+            from utils.extensions import (
+                SprayBrush,
+                CalligraphyBrush,
+            )
+        except Exception:
+            self._external_brushes_registered = True
+            return
+
+        extra_mapping = {
+            'SPRAY': SprayBrush,
+            'CALIGRAFIA': CalligraphyBrush,
+        }
+
+        for name, cls in extra_mapping.items():
+            self._brushes[name] = cls
+
+        self._external_brushes_registered = True
