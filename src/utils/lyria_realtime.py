@@ -35,6 +35,7 @@ class LyriaRealtimeAudio:
     """
     
     # Mapeo simple de colores a instrumentos
+    """
     COLOR_TO_INSTRUMENT = {
         "AZUL": "peruvian harp arpeggios",
         "VERDE": "charango strums",
@@ -44,7 +45,7 @@ class LyriaRealtimeAudio:
         "MAGENTA": "quena flute vibrato",
         "ROSA": "andino violin harmonics",
         "GRIS": "rainstick ambience",
-        "TURQUESA": "pan flute glissandos",
+        "TURQUESA": "pan flute glissandos", # zampoña
         "INDIGO": "bombo leguero pulses",
         "DORADO": "huayno brass trumpet",
         "MARRON": "cajon peruano grooves",
@@ -53,6 +54,30 @@ class LyriaRealtimeAudio:
         "PURPURA": "cajita metallic hits",
         "NARANJA": "festival brass fanfare"
     }
+    """
+    COLOR_TO_INSTRUMENT = {
+        "AZUL": "quena duet over airy pads",
+        "VERDE": "charango arpeggios with bombo pulse",
+        "ROJO": "electro swing",
+        "AMARILLO": "peruvian ocarina melody with bells",
+        "CYAN": "siku pan flute ripples",
+        "MAGENTA": "andino violin legato",
+        "ROSA": "pinkillu flute trills",
+        "GRIS": "rainstick ambience and drones",
+        "TURQUESA": "charango tremolo with cajita hits",
+        "INDIGO": "bombo leguero heartbeat",
+        "DORADO": "huayno brass ensemble",
+        "MARRON": "cajon afroperuano polyrhythm",
+        "NEGRO": "andes bass synth pulses",
+        "BLANCO": "harp harmonics shimmer",
+        "PURPURA": "cajita metallic ostinato",
+        "NARANJA": "festival brass fanfare",
+        "LIMA": "zampona upbeat riffs",
+        "COBALTO": "peruvian harp arpeggios",
+        "CORAL": "bandurria strums",
+        "PLATA": "wind chimes and drone textures"
+    }
+
 
     # Dinámicas sugeridas por tipo de pincel
     BRUSH_TO_DYNAMIC = {

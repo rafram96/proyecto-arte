@@ -5,7 +5,12 @@ Canvas o lienzo digital para pintura.
 import cv2
 import numpy as np
 from collections import deque
-from .config import MAX_POINTS_PER_STROKE, SMOOTHING_ALPHA, ERASER_DISTANCE_THRESHOLD
+from .config import (
+    MAX_POINTS_PER_STROKE,
+    SMOOTHING_ALPHA,
+    ERASER_DISTANCE_THRESHOLD,
+    CANVAS_BACKGROUND_COLOR,
+)
 import math
 import json
 import time
@@ -21,8 +26,13 @@ class Canvas:
         self.colors = colors
         self.color_names = list(colors.keys())
         self.current_color_index = 0
+        self.background_color = tuple(CANVAS_BACKGROUND_COLOR)
         # Canvas principal
-        self.image = np.zeros((self.height, self.width, 3), dtype=np.uint8) + 255
+        self.image = np.full(
+            (self.height, self.width, 3),
+            self.background_color,
+            dtype=np.uint8,
+        )
 
         # Almacenamiento de trazos como lista de objetos
         # Cada trazo: {'points': deque, 'color': str, 'brush_type': str, 'brush_size': int}
@@ -35,7 +45,11 @@ class Canvas:
     
     def clear(self):
         """Borra todo el lienzo y reinicia los trazos."""
-        self.image = np.zeros((self.height, self.width, 3), dtype=np.uint8) + 255
+        self.image = np.full(
+            (self.height, self.width, 3),
+            self.background_color,
+            dtype=np.uint8,
+        )
         self.strokes = []
         self.current_stroke = None
         self._save_to_file()  # Guardar estado vacío
@@ -124,7 +138,11 @@ class Canvas:
             brush_manager: Instancia de BrushManager para obtener pinceles por nombre y tamaño
         """
         # Limpiar canvas
-        self.image = np.zeros((self.height, self.width, 3), dtype=np.uint8) + 255
+        self.image = np.full(
+            (self.height, self.width, 3),
+            self.background_color,
+            dtype=np.uint8,
+        )
 
         # Primero procesar borradores para eliminar trazos (si los hay)
         # Recorrer una copia porque podemos eliminar elementos

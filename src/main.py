@@ -25,7 +25,7 @@ COLOR_SHORTCUT_KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=
 NEXT_COLOR_KEY = 'n'
 PREV_COLOR_KEY = 'p'
 
-#abcd
+
 def _list_directshow_devices_ffmpeg():
     """Intentar listar dispositivos DirectShow usando ffmpeg."""
     ffmpeg = shutil.which("ffmpeg")
@@ -446,7 +446,7 @@ class PaintApp:
                 cv2.rectangle(img, (x, y), (x + w, y + h), (240, 240, 240), -1)
 
             # Borde general
-            cv2.rectangle(img, (x, y), (x + w, y + h), (50, 50, 50), 1)
+            cv2.rectangle(img, (x, y), (x + w, y + h), (210, 210, 210), 1)
 
             # Etiquetas para pinceles, tamaños o herramientas
             label = ''
@@ -623,7 +623,11 @@ class PaintApp:
                             'NEGRO': 'Negro',
                             'BLANCO': 'Blanco',
                             'PURPURA': 'Morado',
-                            'NARANJA': 'Naranja'
+                            'NARANJA': 'Naranja',
+                            'LIMA': 'Lima',
+                            'COBALTO': 'Cobalto',
+                            'CORAL': 'Coral',
+                            'PLATA': 'Plata'
                         }
                         color_code = item.get('value')
                         human_name = human_map.get(color_code, color_code.title() if isinstance(color_code, str) else str(color_code))

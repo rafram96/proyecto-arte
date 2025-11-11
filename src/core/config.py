@@ -33,23 +33,29 @@ FLEXIBILITY_THRESHOLD = 0.03
 
 # Colores disponibles (B, G, R, Y) - OpenCV usa BGR
 COLORS = {
-    'AZUL': (255, 0, 0),
-    'VERDE': (0, 255, 0),
-    'ROJO': (0, 0, 255),
-    'AMARILLO': (0, 255, 255),
-    'CYAN': (255, 255, 0),
-    'MAGENTA': (255, 0, 255),
-    'ROSA': (180, 105, 255),
-    'GRIS': (128, 128, 128),
-    'TURQUESA': (208, 224, 64),
-    'INDIGO': (130, 0, 75),
-    'DORADO': (32, 165, 218),
-    'MARRON': (19, 69, 139),
-    'NEGRO': (0, 0, 0),
+    'AZUL': (255, 106, 31),
+    'VERDE': (119, 203, 27),
+    'ROJO': (48, 59, 255),
+    'AMARILLO': (71, 212, 255),
+    'CYAN': (230, 201, 26),
+    'MAGENTA': (206, 79, 255),
+    'ROSA': (199, 143, 255),
+    'GRIS': (184, 165, 160),
+    'TURQUESA': (160, 210, 0),
+    'INDIGO': (159, 42, 90),
+    'DORADO': (27, 146, 196),
+    'MARRON': (43, 74, 139),
+    'NEGRO': (50, 50, 60),
     'BLANCO': (255, 255, 255),
-    'PURPURA': (128, 0, 128),
-    'NARANJA': (0, 128, 255)
+    'PURPURA': (229, 71, 163),
+    'NARANJA': (31, 122, 255),
+    'LIMA': (60, 255, 167),
+    'COBALTO': (186, 82, 15),
+    'CORAL': (89, 111, 255),
+    'PLATA': (219, 215, 215)
 }
+
+CANVAS_BACKGROUND_COLOR = (0, 0, 0)
 
 COLOR_NAMES = [
     "AZUL",
@@ -67,7 +73,11 @@ COLOR_NAMES = [
     "NEGRO",
     "BLANCO",
     "PURPURA",
-    "NARANJA"
+    "NARANJA",
+    "LIMA",
+    "COBALTO",
+    "CORAL",
+    "PLATA"
 ]
 
 # Tipos de pincel disponibles
