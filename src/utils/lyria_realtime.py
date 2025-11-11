@@ -35,7 +35,7 @@ class LyriaRealtimeAudio:
     """
     
     # Mapeo simple de colores a instrumentos
-    """
+    """"
     COLOR_TO_INSTRUMENT = {
         "AZUL": "peruvian harp arpeggios",
         "VERDE": "charango strums",
@@ -56,28 +56,28 @@ class LyriaRealtimeAudio:
     }
     """
     COLOR_TO_INSTRUMENT = {
-        "AZUL": "quena duet over airy pads",
-        "VERDE": "charango arpeggios with bombo pulse",
-        "ROJO": "electro swing",
-        "AMARILLO": "peruvian ocarina melody with bells",
-        "CYAN": "siku pan flute ripples",
-        "MAGENTA": "andino violin legato",
-        "ROSA": "pinkillu flute trills",
-        "GRIS": "rainstick ambience and drones",
-        "TURQUESA": "charango tremolo with cajita hits",
-        "INDIGO": "bombo leguero heartbeat",
-        "DORADO": "huayno brass ensemble",
-        "MARRON": "cajon afroperuano polyrhythm",
-        "NEGRO": "andes bass synth pulses",
-        "BLANCO": "harp harmonics shimmer",
-        "PURPURA": "cajita metallic ostinato",
-        "NARANJA": "festival brass fanfare",
-        "LIMA": "zampona upbeat riffs",
-        "COBALTO": "peruvian harp arpeggios",
-        "CORAL": "bandurria strums",
-        "PLATA": "wind chimes and drone textures"
+        "AZUL": "electro swing",
+        "VERDE": "cajita metallic hits",
+        "ROJO": "electric guitar riffs",
+        "AMARILLO": "bright marimba polyrhythms with glockenspiel sprinkles",
+        "CYAN": "ambient techno arpeggios with sidechained pads",
+        "MAGENTA": "dream pop vocal chops floating over soft subs",
+        "ROSA": "retro synthwave lead with gated reverb snares",
+        "GRIS": "industrial drones and metallic percussive hits",
+        "TURQUESA": "liquid drum and bass basslines with shimmering keys",
+        "INDIGO": "downtempo trip-hop groove and vinyl textures",
+        "DORADO": "cinematic brass swells with taiko accents",
+        "MARRON": "earthy handpan textures and subtle shakers",
+        "NEGRO": "darkwave bass pulses with analog noise",
+        "BLANCO": "ethereal choir clusters and glass harmonics",
+        "PURPURA": "glitchy IDM patterns with granular sparks",
+        "NARANJA": "funk horn stabs riding atop slap bass",
+        "LIMA": "hyperpop bubble arps with detuned leads",
+        "COBALTO": "post-rock delay guitars and rolling toms",
+        "CORAL": "Quiet melancholic piano",
+        "PLATA": "peruvian rock 80s"
     }
-
+    # """
 
     # Dinámicas sugeridas por tipo de pincel
     BRUSH_TO_DYNAMIC = {

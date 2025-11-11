@@ -50,23 +50,41 @@ class GestureDetector:
         """
         mp_hands = mp.solutions.hands
         
-        def get_y(landmark_idx):
-            return landmarks[landmark_idx].y
+        def get_coord(landmark_idx):
+            lm = landmarks[landmark_idx]
+            return lm.x, lm.y
         
         # 1. Dedo índice extendido
-        index_extended = (
-            get_y(mp_hands.HandLandmark.INDEX_FINGER_TIP) < 
-            get_y(mp_hands.HandLandmark.INDEX_FINGER_PIP) - FLEXIBILITY_THRESHOLD
-        ) and (
-            get_y(mp_hands.HandLandmark.INDEX_FINGER_PIP) < 
-            get_y(mp_hands.HandLandmark.INDEX_FINGER_MCP) - FLEXIBILITY_THRESHOLD
+        tip_x, tip_y = get_coord(mp_hands.HandLandmark.INDEX_FINGER_TIP)
+        pip_x, pip_y = get_coord(mp_hands.HandLandmark.INDEX_FINGER_PIP)
+        mcp_x, mcp_y = get_coord(mp_hands.HandLandmark.INDEX_FINGER_MCP)
+
+        # Vector del índice (MCP -> TIP) y pelvis (MCP -> PIP)
+        idx_vec_x = tip_x - mcp_x
+        idx_vec_y = tip_y - mcp_y
+        pip_vec_x = pip_x - mcp_x
+        pip_vec_y = pip_y - mcp_y
+
+        # Producto punto normalizado para medir alineación
+        dot = idx_vec_x * pip_vec_x + idx_vec_y * pip_vec_y
+        idx_len = (idx_vec_x**2 + idx_vec_y**2) ** 0.5
+        pip_len = (pip_vec_x**2 + pip_vec_y**2) ** 0.5
+        alignment = 0.0
+        if idx_len > 1e-5 and pip_len > 1e-5:
+            alignment = dot / (idx_len * pip_len)
+
+        vertical_extension = (
+            tip_y < pip_y - FLEXIBILITY_THRESHOLD and
+            pip_y < mcp_y - FLEXIBILITY_THRESHOLD
         )
+        lateral_extension = alignment > 0.93
+        index_extended = vertical_extension or lateral_extension
         
         # 2. Requerimos que el dedo medio esté flexionado. No requerimos el anular.
         # Esto facilita dibujo cuando el anular no queda perfectamente plegado.
         middle_flexed = (
-            get_y(mp_hands.HandLandmark.MIDDLE_FINGER_TIP) > 
-            get_y(mp_hands.HandLandmark.MIDDLE_FINGER_PIP) + FLEXIBILITY_THRESHOLD
+            get_coord(mp_hands.HandLandmark.MIDDLE_FINGER_TIP)[1] > 
+            get_coord(mp_hands.HandLandmark.MIDDLE_FINGER_PIP)[1] + FLEXIBILITY_THRESHOLD
         )
 
         return index_extended and middle_flexed
