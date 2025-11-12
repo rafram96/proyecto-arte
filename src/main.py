@@ -168,8 +168,15 @@ class PaintApp:
             self.color_key_bindings[ord(key_char)] = idx
             self.color_shortcuts.append((key_char, COLOR_NAMES[idx]))
 
-        # Configurar ventanas
-        cv2.namedWindow(PAINT_WINDOW_NAME, cv2.WINDOW_AUTOSIZE)
+        # Configurar ventanas (ambas en modo pantalla completa)
+        cv2.namedWindow(TRACKING_WINDOW_NAME, cv2.WINDOW_AUTOSIZE)
+
+        cv2.namedWindow(PAINT_WINDOW_NAME, cv2.WINDOW_NORMAL)
+        cv2.setWindowProperty(
+            PAINT_WINDOW_NAME,
+            cv2.WND_PROP_FULLSCREEN,
+            cv2.WINDOW_FULLSCREEN,
+        )
         
         # Abrir cámara (auto-detección o según --camera)
         try:

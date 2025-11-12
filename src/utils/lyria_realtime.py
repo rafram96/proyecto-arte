@@ -65,17 +65,17 @@ class LyriaRealtimeAudio:
         "ROSA": "retro synthwave lead with gated reverb snares",
         "GRIS": "industrial drones and metallic percussive hits",
         "TURQUESA": "liquid drum and bass basslines with shimmering keys",
-        "INDIGO": "downtempo trip-hop groove and vinyl textures",
+        "INDIGO": "dupstep",
         "DORADO": "jazzy trumpet melodies with upright bass walking lines",
-        "MARRON": "bass drops",
-        "NEGRO": "darkwave bass pulses with analog noise",
-        "BLANCO": "ethereal choir clusters and glass harmonics",
+        "MARRON": "russian techno rock",
+        "NEGRO": "chacalon",
+        "BLANCO": "peruvian ocarina melody",
         "PURPURA": "glitchy IDM patterns with granular sparks",
-        "NARANJA": "anime music",
+        "NARANJA": "piano",
         "LIMA": "hyperpop bubble arps with detuned leads",
         "COBALTO": "post-rock delay guitars and rolling toms",
         "CORAL": "Quiet melancholic piano",
-        "PLATA": "peruvian rock 80s"
+        "PLATA": "andino violin harmonics"
     }
     # """
 
